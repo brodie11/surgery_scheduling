@@ -122,7 +122,7 @@ for month_start in month_starts:
         schedules.append((percentile_column_name, schedSurgery_for_percentile))
         for i in range(100):
             #simulate 100 runs of sched_surgery_for_percentile
-            num_overtime, num_surgeries_completed, surgery_utilisation = simulate_stochastic_durations(schedSurgery_for_percentile)
+            total_mins_overtime,num_overtime, num_surgeries_completed, total_surgery_utilisation = simulate_stochastic_durations(schedSurgery_for_percentile)
             # append data to df
             new_row = {'Percentile Value': percentile_column_name, 'Number of Surgeries that ran overtime': num_overtime, 'Number of surgeries completed': num_surgeries_completed, 'Surgery Utilisation': surgery_utilisation}
             best_percentile_df = best_percentile_df.append(new_row, ignore_index=True)

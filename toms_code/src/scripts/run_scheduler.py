@@ -104,6 +104,8 @@ if __name__ == '__main__':
         time_lim, 0, -1, min_under_prob.ses_sur_dict, util_obj)
       min_under_lex_sol = get_create_solution(session, -1,
         min_under_prob_lex.prob.obj_val, 1, util_obj)
+      
+      min_under_prob_lex.ops.ed
 
       create_update_solution_assignments(session, min_under_lex_sol.id,
         min_under_prob_lex.ses_sur_dict)
