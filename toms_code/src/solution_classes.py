@@ -172,6 +172,7 @@ def get_ses_sur_dict(db_ses, sol_id):
   for i, ses in sessions.iterrows():
     ses_sur_dict[i] = []
     ses_surs = get_solution_session_surs(db_ses, sol_id, i)
+  
     for sur in ses_surs:
 
       ses_sur_dict[i].append(sur.id)
