@@ -1,5 +1,6 @@
 #imports
 import os
+import sys
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -34,17 +35,20 @@ def data_setup(start_date, end_date, specialty_id):
     engine = create_engine('sqlite:///' + db_name)
     Base.metadata.create_all(engine)
     
-    return engine,surgeries,surgical_sessions, specialties
+    return engine,surgeries,surgical_sessions,specialties
 
-def generate_schedule_that_minimises_transfers_and_undertime(start_date, end_date, turn_around = 15, specialty_id = 4,facility = 'A',time_lim = 300):
+def generate_schedule_that_minimises_transfers_and_undertime(start_date, end_date, turn_around = 15, specialty_id = 4,facility = 'A',time_lim = 300, solve_first_time=False):
     #inputs: surgeries,schedules -- pandas dataframes; (everything else slef-explanatory)
     #outputs: sschedProb
     engine, surgeries, surgical_sessions, specialties = data_setup(start_date, end_date, specialty_id)
+    # Filter surgeries and sessions to the specialty and facility of interest.
     # Filter surgeries and sessions to the specialty and facility of interest.
     surgeries = surgeries.loc[(surgeries['specialty_id'] == specialty_id) &
         (surgeries['facility'] == facility)]
     surgical_sessions = surgical_sessions.loc[(surgical_sessions['specialty_id'] == specialty_id) &
         (surgical_sessions['facility'] == facility)]
+    
+    min_under_prob_session_dict = None
 
     Session = sessionmaker(bind=engine)
     with Session() as session:
@@ -57,18 +61,77 @@ def generate_schedule_that_minimises_transfers_and_undertime(start_date, end_dat
         sched_sess = sorted(sched_sess, key=lambda x: x.sdt)
 
         session.commit()
-    
-        min_under_prob = schedProb(sched_surs, sched_sess, turn_around,
-            time_lim, 0, None)
-        util_obj = min_under_prob.prob.obj_val
-        min_under_prob_lex = schedProb(sched_surs, sched_sess, turn_around,
-            time_lim, 0, -1, min_under_prob.ses_sur_dict, util_obj)
+
+        # Create and solve the problem where priority is strictly enforced, no-one
+        # can go ahead of someone if they are lower priority that them.
+        priority_prob = priorityProb(sched_surs, sched_sess, turn_around)
+        pri_sol = get_create_solution(session, 1, 0, 0, priority_prob.obj)
+        create_update_solution_assignments(session, pri_sol.id,
+        priority_prob.ses_sur_dict)
+        graph_name = 'specialty_{0}_start_{1}_end_{2}_strict_priority'.format(specialty_id,
+        start_date.date(), end_date.date())
+        create_session_graph(pri_sol, session, graph_name)
+
+        # Create and solve the problem where there are no justified transfers,
+        # people can go ahead of others that are higher priority than them, but
+        # only if the higher priority patient can't fit in the session.
+        no_transfer_prob = schedProb(sched_surs, sched_sess, turn_around, time_lim,
+        0, 0, priority_prob.ses_sur_dict, None)
+        no_transfer_sol = get_create_solution(session, -1,
+            0, 0, no_transfer_prob.prob.obj_val)
+        create_update_solution_assignments(session, no_transfer_sol.id,
+        no_transfer_prob.ses_sur_dict)
+        graph_name = 'specialty_{0}_start_{1}_end_{2}_transfer_0'.format(specialty_id,
+        start_date.date(), end_date.date())
+        create_session_graph(no_transfer_sol, session, graph_name)
         
+        # Check if the lexicograhoic solution has been found already. If it has we
+        # don't want to spend time finding it again.
+        min_under_lex_sol = get_solution(session, -1, None, 1)
 
-    return min_under_prob_lex
+        if min_under_lex_sol is None or solve_first_time == True:
+        # If we don't have it we need to find the solution that has the fewest
+        # transfers while still minimising the undertime. First we solve the
+        # problem of just minimising undertime. Then given this minimum undertime
+        # value we minimise the number of transfers subject to the minimum
+        # undertime as a constraint.
+            min_under_prob = schedProb(sched_surs, sched_sess, turn_around,
+                time_lim, 0, None)
+            util_obj = min_under_prob.prob.obj_val
 
-def simulate_stochastic_durations(schedSurgery_for_percentile):
-    return 0,0,0,0
+            min_under_prob_lex = schedProb(sched_surs, sched_sess, turn_around,
+                time_lim, 0, -1, min_under_prob.ses_sur_dict, util_obj)
+            min_under_lex_sol = get_create_solution(session, -1,
+                min_under_prob_lex.prob.obj_val, 1, util_obj)
+
+            create_update_solution_assignments(session, min_under_lex_sol.id,
+                min_under_prob_lex.ses_sur_dict)
+            create_update_solution_transfers(session, min_under_lex_sol.id,
+                min_under_prob_lex)
+            
+            min_under_prob_session_dict = min_under_prob_lex.ses_sur_dict
+
+        else:
+            min_under_prob_session_dict = get_ses_sur_dict(session, min_under_lex_sol.id)
+        
+        # graph_name = 'specialty_{0}_start_{1}_end_{2}_min_under'.format(specialty_id,
+        # start_date.date(), end_date.date())
+        graph_name = 'specialty_{0}_start_{1}_end_TEST_min_under'.format(specialty_id,
+        start_date.date(), end_date.date())
+        create_session_graph(min_under_lex_sol, session, graph_name)
+
+    
+        
+    return min_under_prob_session_dict
+
+def simulate_stochastic_durations(schedSurgery_for_percentile:schedProb):
+    print("\n Session surgery dictionary")
+    print(schedSurgery_for_percentile)
+    print("\n")
+    
+    total_mins_overtime, num_overtime, num_surgeries_completed, total_surgery_utilisation = 0,0,0,0
+
+    return total_mins_overtime,num_overtime, num_surgeries_completed, total_surgery_utilisation
 
 #set up pandas dataframe to store everything
 best_percentile_df = pd.DataFrame(columns=['Percentile Value', 'Number of Surgeries that ran overtime', 'Number of surgeries completed', 'Surgery Utilisation', 'Total Mins Overtime'])
@@ -88,7 +151,7 @@ schedules = [] #array of tuples (percentile_column_name, schedSurgery object)
 
 #pick start and end periods for simulation
 period_start_year = 2015
-period_start_month = 3
+period_start_month = 6
 period_end_year = 2016
 period_end_month = 12
 # Create a list of pd.Timestamp objects for the first day of each month
@@ -109,8 +172,8 @@ for i,percentile_column_name in enumerate(percentile_column_names): #for each pe
     percentile_value = percentile_values[i]
     for month_start in month_starts: #and each month
         #Find the solution that has the fewest transfers while still minimising the undertime
-        schedSurgery_for_percentile = generate_schedule_that_minimises_transfers_and_undertime(start_date=month_start,end_date=month_start + pd.DateOffset(months=1),turn_around = 15, specialty_id = specialty, facility = facility, time_lim = 300)
-        schedules.append((percentile_column_name,month_start, schedSurgery_for_percentile))
+        schedSurgery_for_percentile = generate_schedule_that_minimises_transfers_and_undertime(start_date=month_start,end_date=month_start + pd.DateOffset(months=1),turn_around = 15, specialty_id = specialty, facility = facility, time_lim = 300, solve_first_time=False)
+        schedules.append((percentile_column_name, month_start, schedSurgery_for_percentile))
         total_mins_overtime_avg,num_overtime_avg, num_surgeries_completed_avg, total_surgery_utilisation_avg = (0,0,0,0)
         for i in range(100):
             #simulate 100 runs of sched_surgery_for_percentile
@@ -120,9 +183,11 @@ for i,percentile_column_name in enumerate(percentile_column_names): #for each pe
             num_overtime_avg += num_overtime / 100
             num_surgeries_completed_avg += num_surgeries_completed / 100
             total_surgery_utilisation_avg += total_surgery_utilisation / 100
+
+            sys.exit(0)
+
         # append data to df
         new_row = [percentile_column_name, num_overtime_avg, num_surgeries_completed_avg, total_surgery_utilisation_avg, total_mins_overtime_avg]
-        best_percentile_df = best_percentile_df.append(new_row, ignore_index=True)
         best_percentile_df.loc[len(best_percentile_df.index)] = new_row
     #...
         
@@ -132,4 +197,4 @@ for i,percentile_column_name in enumerate(percentile_column_names): #for each pe
 #TODO evenutally run for different specialties and surgeries
 
 #test
-print(best_percentile_df.head())
+print(len(best_percentile_df))

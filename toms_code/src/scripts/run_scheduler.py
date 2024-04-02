@@ -102,10 +102,12 @@ if __name__ == '__main__':
 
       min_under_prob_lex = schedProb(sched_surs, sched_sess, turn_around,
         time_lim, 0, -1, min_under_prob.ses_sur_dict, util_obj)
+      
+      print("\n\n\n\n\n\n\n Min under prob lex: ")
+      print(min_under_prob_lex.ses_sur_dict)
+
       min_under_lex_sol = get_create_solution(session, -1,
         min_under_prob_lex.prob.obj_val, 1, util_obj)
-      
-      min_under_prob_lex.ops.ed
 
       create_update_solution_assignments(session, min_under_lex_sol.id,
         min_under_prob_lex.ses_sur_dict)
@@ -115,6 +117,10 @@ if __name__ == '__main__':
     else:
       min_under_lex_ssd = get_ses_sur_dict(session, min_under_lex_sol.id)
       util_obj = min_under_lex_sol.under_time
+
+
+    print("\n\n\n\n\n\n\n Min under prob lex: ")
+    print(min_under_prob_lex.ses_sur_dict)
 
     graph_name = 'specialty_{0}_start_{1}_end_{2}_min_under'.format(specialty_id,
       start_date.date(), end_date.date())
