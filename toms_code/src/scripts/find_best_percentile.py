@@ -19,49 +19,81 @@ from ..solution_classes import (Base, get_create_solution,
   get_sessions, get_surgeries, get_solution_assignments, get_solution_transfers)
 from ..visualise import create_session_graph
 
+def replace_ev_with_percentile(sched_surs, percentile):
+    """
+    replaces the expected value of sched_surs object used to represent surgeries in scheduling with 
+    percentile value specified
+
+    input: array of sched_surs, percentile value eg. 60
+    output: array of equal length with ev in sched_surs replaced with percentile value
+    """
+
+    for sched_sur in sched_surs:
+        #get ev and variance
+        ed = sched_sur.ed
+        dv = sched_sur.dv
+        # Calculate the scale parameter (s) and shape parameter (sigma) of the lognormal distribution
+        s = ed
+        sigma = dv ** 0.5
+        
+        # Calculate the percentile value using the lognorm module
+        percentile_value = lognorm.ppf(percentile / 100, s=s, scale=np.exp(sigma))
+        sched_sur.ev = percentile_value
+
+    return sched_surs
 
 
 def generate_schedule_that_minimises_transfers_and_undertime(percentile_value,start_date, end_date, turn_around = 15, specialty_id = 4,facility = 'A',time_lim = 300, solve_first_time=False):
-    
-    #TODO make it so it solves with percentile_value rather than mean
+    """
+    Generates schedule for a given percentile value, month, facility, specialty, etc.
+
+    output: session_surgery_dictionary with session id as keys and array of surgery ids as values
+    """
+
 
     min_under_lex_dict = None
 
+    #get sessions and surgeries in given timeframe, facility, etc.
+
     engine = create_engine('sqlite:///' + DATA_FILE)
     Session = sessionmaker(bind=engine)
-
     # Read in data from the database.
     with Session() as session:
         surgeries, surgical_sessions, specialties = prepare_data(session,
         start_date, end_date)
-        
     # Filter surgeries and sessions to the specialty and facility of interest.
     surgeries = surgeries.loc[(surgeries['specialty_id'] == specialty_id) &
         (surgeries['facility'] == facility)]
     surgical_sessions = surgical_sessions.loc[(surgical_sessions['specialty_id'] == specialty_id) &
         (surgical_sessions['facility'] == facility)]
+    
+    #set up storage of solutions so don't have to resolve
 
     # Use the parameters to set the name of the output database, and create it
     # if it deosn't already exist.
-    db_name = 'specialty_{0}_start_{1}_end_{2}.db'.format(specialty_id,
-        start_date.date(), end_date.date())
+    db_name = 'specialty_{0}_start_{1}_end_{2}_percentile{3}.db'.format(specialty_id, #TODO make it so this stores each percentile value as well as each month
+        start_date.date(), end_date.date(), percentile_value)
     db_name = os.path.join(OUTPUT_DB_DIR, db_name)
-
     engine = create_engine('sqlite:///' + db_name)
     Base.metadata.create_all(engine)
-
     Session = sessionmaker(bind=engine)
     with Session() as session:
+
         # Create the objects (surgeries and sessions) that the scheduling code
         # uses, from the data. Sort according to priority and start time.
+
         sched_surs = create_schedule_surs(surgeries, session)
         sched_sess = create_schedule_sess(surgical_sessions, session)
-
         sched_surs = sorted(sched_surs, key=lambda x: x.priority, reverse=True)
         sched_sess = sorted(sched_sess, key=lambda x: x.sdt)
 
-        session.commit()
+        #replace mean with percentile
 
+        sched_surs = replace_ev_with_percentile(sched_surs, percentile_value)
+
+        #solve
+
+        session.commit()
         # Create and solve the problem where priority is strictly enforced, no-one
         # can go ahead of someone if they are lower priority that them.
         priority_prob = priorityProb(sched_surs, sched_sess, turn_around)
@@ -71,7 +103,6 @@ def generate_schedule_that_minimises_transfers_and_undertime(percentile_value,st
         graph_name = 'specialty_{0}_start_{1}_end_{2}_strict_priority'.format(specialty_id,
         start_date.date(), end_date.date())
         create_session_graph(pri_sol, session, graph_name)
-
         # Create and solve the problem where there are no justified transfers,
         # people can go ahead of others that are higher priority than them, but
         # only if the higher priority patient can't fit in the session.
@@ -84,10 +115,11 @@ def generate_schedule_that_minimises_transfers_and_undertime(percentile_value,st
         graph_name = 'specialty_{0}_start_{1}_end_{2}_transfer_0'.format(specialty_id,
         start_date.date(), end_date.date())
         create_session_graph(no_transfer_sol, session, graph_name)
-        
         # Check if the lexicograhoic solution has been found already. If it has we
         # don't want to spend time finding it again.
         min_under_lex_sol = get_solution(session, -1, None, 1)
+
+        #solve if never solved before for a given month
 
         if min_under_lex_sol is None or solve_first_time==True:
         # If we don't have it we need to find the solution that has the fewest
@@ -98,18 +130,16 @@ def generate_schedule_that_minimises_transfers_and_undertime(percentile_value,st
             min_under_prob = schedProb(sched_surs, sched_sess, turn_around,
                 time_lim, 0, None)
             util_obj = min_under_prob.prob.obj_val
-
             min_under_prob_lex = schedProb(sched_surs, sched_sess, turn_around,
                 time_lim, 0, -1, min_under_prob.ses_sur_dict, util_obj)
-
             min_under_lex_sol = get_create_solution(session, -1,
                 min_under_prob_lex.prob.obj_val, 1, util_obj)
-
             create_update_solution_assignments(session, min_under_lex_sol.id,
                 min_under_prob_lex.ses_sur_dict)
             create_update_solution_transfers(session, min_under_lex_sol.id,
                 min_under_prob_lex)
             
+            #get dictionary
             min_under_lex_dict = min_under_prob.ses_sur_dict
 
         else:
@@ -174,10 +204,6 @@ def simulate_stochastic_durations(schedDict:dict, simulation_start_date, simulat
     more than 30 min. Otherwise, the surgery is cancelled
     """
 
-    print("\n Session surgery dictionary")
-    print(schedDict)
-    print("\n")
-
     #initialise return values
     num_surgeries_completed, average_surgery_utilisation, total_mins_overtime, num_sessions_that_run_overtime, num_sessions_with_cancelled_surgeries, num_surgeries_cancelled = 0,0,0,0,0,0
     average_surgery_utilisation_array = []
@@ -187,29 +213,29 @@ def simulate_stochastic_durations(schedDict:dict, simulation_start_date, simulat
 
     #for each session in dictionary
     for session_id, surgery_array in schedDict.items():
-        print(f"Session id: {session_id}")
+        # print(f"Session id: {session_id}")
         #get info about this session such as duration
         sess = [session for session in sched_sess if session.n == session_id][0]
         session_duration = sess.sd
-        print(f"Session duration: {session_duration}")
+        # print(f"Session duration: {session_duration}")
 
         combined_surgery_duration = 0
         ran_overtime = False
         #for each surgery in session
         for surgery_id in surgery_array:
-            print(f"    surgery_id: {surgery_id}")
+            # print(f"    surgery_id: {surgery_id}")
             #find surgery object
             sur = [sur for sur in sched_surs if sur.n == surgery_id][0]
             #get duration randomly from lognormal distribution and add to total duration
             duration_mean = sur.ed
-            print(f"    surgery_duration_mean: {duration_mean}")
+            # print(f"    surgery_duration_mean: {duration_mean}")
             duration_variance = sur.dv
             #SIMULATE DURATION
             # Calculate the mean (mu) and standard deviation (sigma) of the corresponding normal distribution
             mu = np.log(duration_mean / np.sqrt(1 + duration_variance / duration_mean**2))
             sigma = np.sqrt(np.log(1 + duration_variance / duration_mean**2))
             duration = np.random.lognormal(mean=mu, sigma=sigma, size=1)[0]
-            print(f"    surgery_duration_simulated: {duration}")
+            # print(f"    surgery_duration_simulated: {duration}")
             #check if there's time left for this surgery
             if combined_surgery_duration + duration_mean + turn_around < session_duration + 30:
                 #if not first surgery, add turn_around_time
@@ -222,11 +248,11 @@ def simulate_stochastic_durations(schedDict:dict, simulation_start_date, simulat
                 #if surgery will probably take more than 30 mins overtime then increment cancellation metrics accordingly and stop surgeries for day
                 cancelled_surgery_index = surgery_array.index(surgery_id)
                 num_surgeries_cancelled += len(surgery_array[cancelled_surgery_index:])
-                print(f"Surgeries cancelled! num_surgeries_cancelled = {num_surgeries_cancelled}")
-                print(f"All surgeries: {surgery_array}")
+                # print(f"Surgeries cancelled! num_surgeries_cancelled = {num_surgeries_cancelled}")
+                # print(f"All surgeries: {surgery_array}")
                 num_sessions_with_cancelled_surgeries += 1
                 break
-        print(f"Combined surgery duration: {combined_surgery_duration}")
+        # print(f"Combined surgery duration: {combined_surgery_duration}")
         #if ran overtime then record overtime metrics accordingly
         if combined_surgery_duration > session_duration:
             total_mins_overtime += combined_surgery_duration - session_duration
@@ -256,8 +282,8 @@ percentile_column_names = ['duration_45th_percentile', 'duration_50th_percentile
 #pick start and end periods for simulation
 period_start_year = 2015
 period_start_month = 6
-period_end_year = 2016
-period_end_month = 12
+period_end_year = 2015
+period_end_month = 9
 simulation_start_date = pd.Timestamp(year=period_start_year, month=period_start_month, day=1) 
 simulation_end_date = pd.Timestamp(year=period_end_year, month=period_end_month, day=1) 
 # Create a list of pd.Timestamp objects for the first day of each month
@@ -303,9 +329,8 @@ for i,percentile_column_name in enumerate(percentile_column_names): #for each pe
             new_row = [i, percentile_column_name, month_start, num_surgeries_completed, average_surgery_utilisation, total_mins_overtime, num_sessions_that_run_overtime, num_sessions_with_cancelled_surgeries, num_surgeries_cancelled]
             best_percentile_df.loc[len(best_percentile_df.index)] = new_row
 
-        print(best_percentile_df)
-
-        sys.exit(0)
+    print(best_percentile_df)
+    sys.exit(0)
         
 # Count how many surgeries are completed without running overtime (c) and how many run overtime (o)
 # Average c and o across each month and plot against percentile values
