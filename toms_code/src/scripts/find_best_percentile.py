@@ -1,6 +1,8 @@
 #imports
 import os
 import sys
+import numpy as np
+from scipy.stats import lognorm
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -19,8 +21,10 @@ from ..visualise import create_session_graph
 
 
 
-def generate_schedule_that_minimises_transfers_and_undertime(start_date, end_date, turn_around = 15, specialty_id = 4,facility = 'A',time_lim = 300, solve_first_time=False):
+def generate_schedule_that_minimises_transfers_and_undertime(percentile_value,start_date, end_date, turn_around = 15, specialty_id = 4,facility = 'A',time_lim = 300, solve_first_time=False):
     
+    #TODO make it so it solves with percentile_value rather than mean
+
     min_under_lex_dict = None
 
     engine = create_engine('sqlite:///' + DATA_FILE)
@@ -141,6 +145,8 @@ def get_all_sessions_and_surgeries(start_date, end_date, specialty_id = 4, facil
     engine = create_engine('sqlite:///' + db_name)
     Base.metadata.create_all(engine)
 
+    sched_surs, sched_sess = None, None
+
     Session = sessionmaker(bind=engine)
     with Session() as session:
         # Create the objects (surgeries and sessions) that the scheduling code
@@ -153,47 +159,88 @@ def get_all_sessions_and_surgeries(start_date, end_date, specialty_id = 4, facil
     
     return sched_surs, sched_sess
 
-def simulate_stochastic_durations(percentile, schedDict:dict, simulation_start_date, simulation_end_date, specialty_id = 4, facility="A"):
+def simulate_stochastic_durations(schedDict:dict, simulation_start_date, simulation_end_date,turn_around=15):
+    """
+    does one simulation run of surgery durations 
+    based on their lognormal distribution. Calculates metrics
+    of interest like total_mins_overtime, 
+    num_sessions_that_run_overtime, 
+    num_sessions_with_cancelled_surgeries, 
+    num_surgeries_completed, 
+    average_surgery_utilisation.
+
+    Note: We assume a surgery is allowed to go ahead so long
+    as its expected time won't put the session overtime by 
+    more than 30 min. Otherwise, the surgery is cancelled
+    """
+
     print("\n Session surgery dictionary")
-    print(schedSurgery_for_percentile)
+    print(schedDict)
     print("\n")
 
     #initialise return values
-    total_mins_overtime, num_overtime, num_surgeries_completed, total_surgery_utilisation = 0,0,0,0
+    num_surgeries_completed, average_surgery_utilisation, total_mins_overtime, num_sessions_that_run_overtime, num_sessions_with_cancelled_surgeries, num_surgeries_cancelled = 0,0,0,0,0,0
+    average_surgery_utilisation_array = []
 
     #get all sessions and surgeries
-    sched_surs, sched_sess = get_all_sessions_and_surgeries(simulation_start_date, simulation_end_date, )
+    sched_surs, sched_sess = get_all_sessions_and_surgeries(simulation_start_date, simulation_end_date, specialty_id = 4, facility = 'A', time_lim = 300)
 
     #for each session in dictionary
     for session_id, surgery_array in schedDict.items():
+        print(f"Session id: {session_id}")
         #get info about this session such as duration
-        sess = [session for session in sched_sess if session.n == session_id]
+        sess = [session for session in sched_sess if session.n == session_id][0]
         session_duration = sess.sd
+        print(f"Session duration: {session_duration}")
 
         combined_surgery_duration = 0
+        ran_overtime = False
         #for each surgery in session
-        for sur in surgery_array:
+        for surgery_id in surgery_array:
+            print(f"    surgery_id: {surgery_id}")
+            #find surgery object
+            sur = [sur for sur in sched_surs if sur.n == surgery_id][0]
             #get duration randomly from lognormal distribution and add to total duration
             duration_mean = sur.ed
+            print(f"    surgery_duration_mean: {duration_mean}")
             duration_variance = sur.dv
             #SIMULATE DURATION
-            # Calculate the shape parameter (s) of the lognormal distribution
-            s = np.sqrt(np.log(1 + variance / ev**2))
-            # Calculate the scale parameter (scale) of the lognormal distribution
-            scale = np.exp(ev - 0.5 * s**2)
-            # Generate random values from the lognormal distribution
-            random_values = lognorm.rvs(s, scale=scale, size=size)
-
-
-            #increment number of surgeries completed
-        
-        #calculate surgery utilisation
-        #increment num_overtime and add to total_mins_overtime if appropriate
-
-    return total_mins_overtime,num_overtime, num_surgeries_completed, total_surgery_utilisation
+            # Calculate the mean (mu) and standard deviation (sigma) of the corresponding normal distribution
+            mu = np.log(duration_mean / np.sqrt(1 + duration_variance / duration_mean**2))
+            sigma = np.sqrt(np.log(1 + duration_variance / duration_mean**2))
+            duration = np.random.lognormal(mean=mu, sigma=sigma, size=1)[0]
+            print(f"    surgery_duration_simulated: {duration}")
+            #check if there's time left for this surgery
+            if combined_surgery_duration + duration_mean + turn_around < session_duration + 30:
+                #if not first surgery, add turn_around_time
+                if surgery_id != surgery_array[0]:
+                    combined_surgery_duration += turn_around
+                #perform surgery
+                combined_surgery_duration += duration
+                num_surgeries_completed += 1
+            else:
+                #if surgery will probably take more than 30 mins overtime then increment cancellation metrics accordingly and stop surgeries for day
+                cancelled_surgery_index = surgery_array.index(surgery_id)
+                num_surgeries_cancelled += len(surgery_array[cancelled_surgery_index:])
+                print(f"Surgeries cancelled! num_surgeries_cancelled = {num_surgeries_cancelled}")
+                print(f"All surgeries: {surgery_array}")
+                num_sessions_with_cancelled_surgeries += 1
+                break
+        print(f"Combined surgery duration: {combined_surgery_duration}")
+        #if ran overtime then record overtime metrics accordingly
+        if combined_surgery_duration > session_duration:
+            total_mins_overtime += combined_surgery_duration - session_duration
+            num_sessions_that_run_overtime += 1
+        #caclulate utilisation
+        average_surgery_utilisation_array.append(combined_surgery_duration / session_duration)
+    average_surgery_utilisation = sum(average_surgery_utilisation_array)/len(average_surgery_utilisation_array)
+    
+    #return metrics
+    return num_surgeries_completed, average_surgery_utilisation, total_mins_overtime, num_sessions_that_run_overtime, num_sessions_with_cancelled_surgeries, num_surgeries_cancelled
 
 #set up pandas dataframe to store everything
-best_percentile_df = pd.DataFrame(columns=['Percentile Value', 'Month from start', 'Number of Surgeries that ran overtime', 'Number of surgeries completed', 'Surgery Utilisation', 'Total Mins Overtime'])
+best_percentile_df = pd.DataFrame(columns = ["i", "percentile_column_name", "month_start", "num_surgeries_completed", "average_surgery_utilisation", "total_mins_overtime", "num_sessions_that_run_overtime", "num_sessions_with_cancelled_surgeries", "num_surgeries_cancelled"]
+)
 
 # Pick a few different percentile values to use as mean surgery duration eg. (45,50,55,60,65)
 percentile_values = [45,50,55,60,65]
@@ -227,37 +274,38 @@ specialty = 4
 facility = 'A'
 
 # For each Month:
-schedules = [] #array of tuples (start_date, ses_sur_dict)
+schedules = [] #array of tuples (start_date, percentile_value, ses_sur_dict)
 
-for month_start in month_starts: #and each month
-    #Find the solution that has the fewest transfers while still minimising the undertime
-    schedSurgery_for_percentile = generate_schedule_that_minimises_transfers_and_undertime(
-        start_date=month_start,end_date=month_start + pd.DateOffset(months=1),
-        turn_around = 15, specialty_id = specialty, facility = facility, time_lim = 300, 
-        solve_first_time=True)
-    schedules.append((month_start, schedSurgery_for_percentile))
-
-    break #TODO remove this
-
+# For each Month:
 for i,percentile_column_name in enumerate(percentile_column_names): #for each percentile
     percentile_value = percentile_values[i]
-    for month_from_start, schedules_tuple in enumerate(schedules):
-        total_mins_overtime_avg,num_overtime_avg, num_surgeries_completed_avg, total_surgery_utilisation_avg = (0,0,0,0)
-        for i in range(100):
-            #simulate 100 runs of sched_surgery_for_percentile
-            total_mins_overtime,num_overtime, num_surgeries_completed, total_surgery_utilisation = simulate_stochastic_durations(
-                percentile_value, schedSurgery_for_percentile, simulation_start_date,
-                simulation_end_date, specialty_id=4)
-            #take average values
-            total_mins_overtime_avg += total_mins_overtime / 100
-            num_overtime_avg += num_overtime / 100
-            num_surgeries_completed_avg += num_surgeries_completed / 100
-            total_surgery_utilisation_avg += total_surgery_utilisation / 100
+    for month_start in month_starts: #and each month
+        #Find the solution that has the fewest transfers while still minimising the undertime
+        schedSurgery_for_percentile = generate_schedule_that_minimises_transfers_and_undertime(
+            percentile_value, month_start,month_start + pd.DateOffset(months=1),
+            turn_around = 15, specialty_id = specialty, facility = facility, time_lim = 300, 
+            solve_first_time=False)
+        schedules.append((month_start,percentile_column_name,schedSurgery_for_percentile))
+        num_runs = 100
 
-        # append data to df
-        new_row = [percentile_column_name, month_from_start, num_overtime_avg, num_surgeries_completed_avg, total_surgery_utilisation_avg, total_mins_overtime_avg]
-        best_percentile_df.loc[len(best_percentile_df.index)] = new_row
-    #...
+        #set variables to average simulation metrics LINE 285 vvv
+        avg_num_surgeries_completed, avg_total_mins_overtime, avg_num_sessions_that_run_overtime, avg_num_sessions_with_cancelled_surgeries, avg_num_surgeries_cancelled = 0,0,0,0,0
+        avg_average_surgery_utilisation = []
+
+        for i in range(num_runs):
+            #simulate 100 runs of sched_surgery_for_percentile
+            result = simulate_stochastic_durations(
+                schedSurgery_for_percentile, simulation_start_date,
+                simulation_end_date)
+            num_surgeries_completed, average_surgery_utilisation, total_mins_overtime, num_sessions_that_run_overtime, num_sessions_with_cancelled_surgeries, num_surgeries_cancelled = result
+            
+             # append data to df
+            new_row = [i, percentile_column_name, month_start, num_surgeries_completed, average_surgery_utilisation, total_mins_overtime, num_sessions_that_run_overtime, num_sessions_with_cancelled_surgeries, num_surgeries_cancelled]
+            best_percentile_df.loc[len(best_percentile_df.index)] = new_row
+
+        print(best_percentile_df)
+
+        sys.exit(0)
         
 # Count how many surgeries are completed without running overtime (c) and how many run overtime (o)
 # Average c and o across each month and plot against percentile values
