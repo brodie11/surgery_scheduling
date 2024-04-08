@@ -71,7 +71,7 @@ def generate_schedule_that_minimises_transfers_and_undertime(percentile_value,st
 
     # Use the parameters to set the name of the output database, and create it
     # if it deosn't already exist.
-    db_name = 'specialty_{0}_start_{1}_end_{2}_percentile{3}.db'.format(specialty_id, #TODO make it so this stores each percentile value as well as each month
+    db_name = 'specialty_{0}_start_{1}_end_{2}_percentile{3}.db'.format(specialty_id,
         start_date.date(), end_date.date(), percentile_value)
     db_name = os.path.join(OUTPUT_DB_DIR, db_name)
     engine = create_engine('sqlite:///' + db_name)
@@ -195,7 +195,7 @@ def get_all_sessions_and_surgeries(simulation_start_date, simulation_end_date, p
         sched_sess = sorted(sched_sess, key=lambda x: x.sdt)
     return sched_surs, sched_sess
 
-def simulate_stochastic_durations(schedDict:dict, simulation_start_date, simulation_end_date, percentile_value,turn_around=15):
+def simulate_stochastic_durations(schedDict:dict, start_date, end_date, percentile_value,turn_around=15, specialty_id = 4, facility = 'A', time_lim = 300):
     """
     does one simulation run of surgery durations 
     based on their lognormal distribution. Calculates metrics
@@ -220,7 +220,7 @@ def simulate_stochastic_durations(schedDict:dict, simulation_start_date, simulat
     num_surgeries_completed, average_surgery_utilisation, total_mins_overtime, num_sessions_that_run_overtime, num_sessions_with_cancelled_surgeries, num_surgeries_cancelled = 0,0,0,0,0,0
     average_surgery_utilisation_array = []
     #get all sessions and surgeries
-    sched_surs, sched_sess = get_all_sessions_and_surgeries(simulation_start_date, simulation_end_date, percentile_value, specialty_id = 4, facility = 'A', time_lim = 300)
+    sched_surs, sched_sess = get_all_sessions_and_surgeries(start_date, end_date, percentile_value, specialty_id, facility, time_lim)
 
     #simulation
 
@@ -293,19 +293,16 @@ if __name__ == '__main__':
     )
 
     # Pick a few different percentile values to simulate for eg. (45,50,55,60,65)
-    percentile_values = [45]
+    percentile_values = [45,50,55,60,65]
     percentile_column_names = ['duration_45th_percentile', 'duration_50th_percentile', 'duration_55th_percentile', 'duration_60th_percentile', 'duration_65th_percentile']
-    percentile_column_names = ['duration_45th_percentile'] #TODO remove
 
     #TODO figure out which facility is best to use
-    #TODO figure out the valid date range for that facility eg. March 2014 - Feb 2016
-    #TODO pick trainign months and testing months
 
     #pick start and end periods for simulation
-    period_start_year = 2016 #can go 2015-3 earliest
-    period_start_month = 2
+    period_start_year = 2015 #can go 2015-3 earliest
+    period_start_month = 3
     period_end_year = 2016 #can go 2016-12 latest
-    period_end_month = 5
+    period_end_month = 12
     simulation_start_date = pd.Timestamp(year=period_start_year, month=period_start_month, day=1) 
     simulation_end_date = pd.Timestamp(year=period_end_year, month=period_end_month, day=1) 
     # Create a list of pd.Timestamp objects for the first day of each month
@@ -334,7 +331,7 @@ if __name__ == '__main__':
             sched_sur_dict = generate_schedule_that_minimises_transfers_and_undertime(
                 percentile_value, month_start,month_start + pd.DateOffset(months=1),
                 turn_around = 15, specialty_id = specialty, facility = facility, time_lim = 300, 
-                solve_first_time=False)
+                solve_first_time=True)
             schedules.append((month_start,percentile_column_name,sched_sur_dict))
 
             #simulate durations 100 times
@@ -342,8 +339,8 @@ if __name__ == '__main__':
             for j in range(num_runs):
                 #simulate 100 runs of sched_surgery_for_percentile
                 result = simulate_stochastic_durations(
-                    sched_sur_dict, simulation_start_date,
-                    simulation_end_date, percentile_value)
+                    sched_sur_dict, month_start,
+                    month_start + pd.DateOffset(months=1), percentile_value)
                 #get metrics from temporary result variable
                 num_surgeries_completed, average_surgery_utilisation, total_mins_overtime, num_sessions_that_run_overtime, num_sessions_with_cancelled_surgeries, num_surgeries_cancelled = result
                     # append data to df
