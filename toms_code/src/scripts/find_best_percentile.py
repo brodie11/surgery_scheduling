@@ -277,7 +277,10 @@ def simulate_stochastic_durations(schedDict:dict, start_date, end_date, percenti
         if combined_surgery_duration > session_duration:
             total_mins_overtime += combined_surgery_duration - session_duration
             num_sessions_that_run_overtime += 1
-        #caclulate utilisation
+        #caclulate utilisation - make sure it's not greater than 1
+        calculated_utilisation = combined_surgery_duration / session_duration
+        if calculated_utilisation > 1:
+            calculated_utilisation = 1
         average_surgery_utilisation_array.append(combined_surgery_duration / session_duration)
     average_surgery_utilisation = sum(average_surgery_utilisation_array)/len(average_surgery_utilisation_array)
 
@@ -330,7 +333,7 @@ if __name__ == '__main__':
             sched_sur_dict = generate_schedule_that_minimises_transfers_and_undertime(
                 percentile_value, month_start,month_start + pd.DateOffset(months=1),
                 turn_around = 15, specialty_id = specialty, facility = facility, time_lim = 300, 
-                solve_first_time=False)
+                solve_first_time=True)
             schedules.append((month_start,percentile_column_name,sched_sur_dict))
 
             #simulate durations 100 times
