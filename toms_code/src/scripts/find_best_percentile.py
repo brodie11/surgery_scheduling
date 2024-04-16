@@ -140,8 +140,7 @@ def generate_schedule_that_minimises_transfers_and_undertime(percentile_value,st
                 min_under_prob_lex)
             
             #get dictionary
-
-            min_under_lex_dict = min_under_prob.ses_sur_dict
+            min_under_lex_dict = min_under_prob_lex.ses_sur_dict
 
         else:
             #otherwise simply get dictionary from solution object
