@@ -3,11 +3,15 @@ import os
 import sys
 import numpy as np
 from scipy.stats import lognorm
+from scipy.stats import norm
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import pandas as pd
 import math
+from scipy import stats
+
+import matplotlib.pyplot as plt
 
 from ..configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
 from ..scheduler_utils import (
@@ -19,6 +23,14 @@ from ..solution_classes import (Base, get_create_solution,
   get_sessions, get_surgeries, get_solution_assignments, get_solution_transfers)
 from ..visualise import create_session_graph
 
+# Function to convert mean and variance of lognormal distribution to mean and variance of normal distribution
+def lognormal_to_normal(y_mean, y_var):
+    # Convert mean and variance of lognormal distribution to mean and standard deviation of normal distribution
+    X_mean = np.log(y_mean / ((1 + y_var/y_mean**2)**0.5))
+    X_var = np.log(1 + y_var/y_mean**2)
+
+    return X_mean, X_var
+
 def replace_ev_with_percentile(sched_surs, percentile):
     """
     replaces the expected value of sched_surs object used to represent surgeries in scheduling with 
@@ -27,17 +39,22 @@ def replace_ev_with_percentile(sched_surs, percentile):
     input: array of sched_surs, percentile value eg. 60
     output: array of equal length with ev in sched_surs replaced with percentile value
     """
-
     for sched_sur in sched_surs:
+
         #get ev and variance
         ed = sched_sur.ed
         dv = sched_sur.dv
-        # Calculate the scale parameter (s) and shape parameter (sigma) of the lognormal distribution
-        s = ed
-        sigma = dv ** 0.5
-        
-        # Calculate the percentile value using the lognorm module
-        percentile_value = lognorm.ppf(percentile / 100, s=s, scale=np.exp(sigma))
+        # Convert mean and variance of lognormal distribution to mean and standard deviation of normal distribution
+        x_mean, x_var = lognormal_to_normal(ed, dv)
+        # Calculate percentile value of normal distribution
+        percentile_value = lognorm.ppf(percentile / 100, s=np.sqrt(x_var), scale=np.exp(x_mean))
+        # print(f"Percentile {percentile}")
+        # print(f"ed {ed}")
+        # print(f"dv {dv}")
+        # print(f"x_mean {x_mean}")
+        # print(f"x_var {x_var}")
+        # print(f"percentile_value {percentile_value}")
+
         sched_sur.ev = percentile_value
 
     return sched_surs
@@ -117,11 +134,11 @@ def generate_schedule_that_minimises_transfers_and_undertime(percentile_value,st
         create_session_graph(no_transfer_sol, session, graph_name)
         # Check if the lexicograhoic solution has been found already. If it has we
         # don't want to spend time finding it again.
-        min_under_lex_sol = get_solution(session, -1, None, 1)
+        min_under_sol = get_solution(session, 0, None, None)
 
         #solve if never solved before for a given month and percentile
 
-        if min_under_lex_sol is None or solve_first_time==True:
+        if min_under_sol is None or solve_first_time==True:
         # If we don't have it we need to find the solution that has the fewest
         # transfers while still minimising the undertime. First we solve the
         # problem of just minimising undertime. Then given this minimum undertime
@@ -130,27 +147,27 @@ def generate_schedule_that_minimises_transfers_and_undertime(percentile_value,st
             min_under_prob = schedProb(sched_surs, sched_sess, turn_around,
                 time_lim, 0, None)
             util_obj = min_under_prob.prob.obj_val
-            min_under_prob_lex = schedProb(sched_surs, sched_sess, turn_around,
-                time_lim, 0, -1, min_under_prob.ses_sur_dict, util_obj)
-            min_under_lex_sol = get_create_solution(session, -1,
-                min_under_prob_lex.prob.obj_val, 1, util_obj)
-            create_update_solution_assignments(session, min_under_lex_sol.id,
-                min_under_prob_lex.ses_sur_dict)
-            create_update_solution_transfers(session, min_under_lex_sol.id,
-                min_under_prob_lex)
+            # min_under_prob_lex = schedProb(sched_surs, sched_sess, turn_around,
+            #     time_lim, 0, -1, min_under_prob.ses_sur_dict, util_obj)
+            min_under_sol = get_create_solution(session, 0,
+                None, None, None)
+            create_update_solution_assignments(session, min_under_sol.id,
+                min_under_prob.ses_sur_dict)
+            create_update_solution_transfers(session, min_under_sol.id,
+                min_under_prob)
             
             #get dictionary
-            min_under_lex_dict = min_under_prob_lex.ses_sur_dict
+            min_under_lex_dict = min_under_prob.ses_sur_dict
 
         else:
             #otherwise simply get dictionary from solution object
 
-            min_under_lex_dict = get_ses_sur_dict(session, min_under_lex_sol.id)
+            min_under_lex_dict = get_ses_sur_dict(session, min_under_sol.id)
 
         #graph
         graph_name = 'specialty_{0}_start_{1}_end_{2}_min_under_percentile{3}'.format(specialty_id,
         start_date.date(), end_date.date(), percentile_value)
-        create_session_graph(min_under_lex_sol, session, graph_name)
+        create_session_graph(min_under_sol, session, graph_name)
 
     return min_under_lex_dict
     
@@ -252,11 +269,10 @@ def simulate_stochastic_durations(schedDict:dict, start_date, end_date, percenti
             duration_variance = sur.dv
             #SIMULATE DURATION
             # Calculate the mean (mu) and standard deviation (sigma) of the corresponding normal distribution
-            mu = np.log(duration_mean / np.sqrt(1 + duration_variance / duration_mean**2))
+            mu = np.log(duration_mean / np.sqrt(1 + (duration_variance / duration_mean**2)))
             sigma = np.sqrt(np.log(1 + duration_variance / duration_mean**2))
             duration = np.random.lognormal(mean=mu, sigma=sigma, size=1)[0]
-            # print(f"    surgery_duration_simulated: {duration}")
-            #check if there's time left for this surgery
+
             if combined_surgery_duration + duration_mean + turn_around < session_duration + 30:
                 #if not first surgery, add turn_around_time
                 if surgery_id != surgery_array[0]:
