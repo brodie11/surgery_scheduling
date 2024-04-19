@@ -253,8 +253,8 @@ def simulate_stochastic_durations(schedDict:dict, start_date, end_date, percenti
             duration_variance = sur.dv
             #SIMULATE DURATION
             # Calculate the mean (mu) and standard deviation (sigma) of the corresponding normal distribution
-            mu = np.log(duration_mean / np.sqrt(1 + duration_variance / duration_mean**2))
-            sigma = np.sqrt(np.log(1 + duration_variance / duration_mean**2))
+            mu = np.log(duration_mean / np.sqrt(1 + (duration_variance/duration_mean**2)))
+            sigma = np.sqrt(np.log(1 + (duration_variance / duration_mean**2)))
             duration = np.random.lognormal(mean=mu, sigma=sigma, size=1)[0]
             # print(f"    surgery_duration_simulated: {duration}")
             #check if there's time left for this surgery
@@ -331,7 +331,7 @@ if __name__ == '__main__':
             sched_sur_dict = generate_schedule_that_minimises_transfers_and_undertime(
                 percentile_value, month_start,month_start + pd.DateOffset(months=1),
                 turn_around = 15, specialty_id = specialty, facility = facility, time_lim = 300, 
-                solve_first_time=False)
+                solve_first_time=True)
             schedules.append((month_start,percentile_column_name,sched_sur_dict))
 
             #simulate durations 100 times
