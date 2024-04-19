@@ -23,9 +23,9 @@ if __name__ == '__main__':
   turn_around = 15
   specialty_id = 4
   facility = 'A'
-  start_date = pd.Timestamp(year=2015, month=7, day=1)
+  start_date = pd.Timestamp(year=2016, month=1, day=1)
   # end_date = pd.Timestamp(year=2016, month=1, day=25)
-  end_date = pd.Timestamp(year=2015, month=8, day=1)
+  end_date = pd.Timestamp(year=2016, month=3, day=1)
   time_lim = 300
 
   engine = create_engine('sqlite:///' + DATA_FILE)
@@ -35,12 +35,6 @@ if __name__ == '__main__':
   with Session() as session:
     surgeries, surgical_sessions, specialties = prepare_data(session,
       start_date, end_date)
-    
-  # Filter surgeries and sessions to the specialty and facility of interest.
-  surgeries = surgeries.loc[(surgeries['specialty_id'] == specialty_id) &
-    (surgeries['facility'] == facility)]
-  surgical_sessions = surgical_sessions.loc[(surgical_sessions['specialty_id'] == specialty_id) &
-    (surgical_sessions['facility'] == facility)]
 
   # Use the parameters to set the name of the output database, and create it
   # if it deosn't already exist.
@@ -50,6 +44,12 @@ if __name__ == '__main__':
 
   engine = create_engine('sqlite:///' + db_name)
   Base.metadata.create_all(engine)
+
+  # Filter surgeries and sessions to the specialty and facility of interest.
+  surgeries = surgeries.loc[(surgeries['specialty_id'] == specialty_id) &
+    (surgeries['facility'] == facility)]
+  surgical_sessions = surgical_sessions.loc[(surgical_sessions['specialty_id'] == specialty_id) &
+    (surgical_sessions['facility'] == facility)]
 
   Session = sessionmaker(bind=engine)
   with Session() as session:
@@ -102,7 +102,6 @@ if __name__ == '__main__':
 
       min_under_prob_lex = schedProb(sched_surs, sched_sess, turn_around,
         time_lim, 0, -1, min_under_prob.ses_sur_dict, util_obj)
-
       min_under_lex_sol = get_create_solution(session, -1,
         min_under_prob_lex.prob.obj_val, 1, util_obj)
 
