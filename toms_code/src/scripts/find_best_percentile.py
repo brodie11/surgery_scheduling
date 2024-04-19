@@ -39,6 +39,7 @@ def replace_ev_with_percentile(sched_surs, percentile):
     input: array of sched_surs, percentile value eg. 60
     output: array of equal length with ev in sched_surs replaced with percentile value
     """
+    i = 0
     for sched_sur in sched_surs:
 
         #get ev and variance
@@ -48,12 +49,12 @@ def replace_ev_with_percentile(sched_surs, percentile):
         x_mean, x_var = lognormal_to_normal(ed, dv)
         # Calculate percentile value of normal distribution
         percentile_value = lognorm.ppf(percentile / 100, s=np.sqrt(x_var), scale=np.exp(x_mean))
-        # print(f"Percentile {percentile}")
-        # print(f"ed {ed}")
-        # print(f"dv {dv}")
-        # print(f"x_mean {x_mean}")
-        # print(f"x_var {x_var}")
-        # print(f"percentile_value {percentile_value}")
+        print(f"Percentile {percentile}")
+        print(f"ed {ed}")
+        print(f"dv {dv}")
+        print(f"x_mean {x_mean}")
+        print(f"x_var {x_var}")
+        print(f"percentile_value {percentile_value}")
 
         sched_sur.ev = percentile_value
 
