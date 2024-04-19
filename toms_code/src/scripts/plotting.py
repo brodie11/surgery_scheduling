@@ -16,6 +16,10 @@ data3 = df[df['percentile_column_name'] == 'duration_55th_percentile']
 data4 = df[df['percentile_column_name'] == 'duration_60th_percentile']
 data5 = df[df['percentile_column_name'] == 'duration_65th_percentile']
 
+
+sns.displot(data=df, x='num_surgeries_completed', hue="percentile_column_name", kind="kde")
+plt.show()
+
 # plotting histograms 
 plt.hist(data1['num_surgeries_completed'],  
          alpha=0.4,  
