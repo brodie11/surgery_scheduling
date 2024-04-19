@@ -270,8 +270,8 @@ def simulate_stochastic_durations(schedDict:dict, start_date, end_date, percenti
             duration_variance = sur.dv
             #SIMULATE DURATION
             # Calculate the mean (mu) and standard deviation (sigma) of the corresponding normal distribution
-            mu = np.log(duration_mean / np.sqrt(1 + (duration_variance / duration_mean**2)))
-            sigma = np.sqrt(np.log(1 + duration_variance / duration_mean**2))
+            mu = np.log(duration_mean / np.sqrt(1 + ((duration_variance/duration_mean**2))))
+            sigma = np.sqrt(np.log(1 + (duration_variance / duration_mean**2)))
             duration = np.random.lognormal(mean=mu, sigma=sigma, size=1)[0]
 
             if combined_surgery_duration + duration_mean + turn_around < session_duration + 30:
