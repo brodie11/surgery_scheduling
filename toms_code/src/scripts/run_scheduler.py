@@ -21,11 +21,11 @@ if __name__ == '__main__':
 
   # Set the value of the parameters.
   turn_around = 15
-  specialty_id = 4
-  facility = 'A'
-  start_date = pd.Timestamp(year=2016, month=1, day=1)
+  specialty_id = 2
+  facility = 'C'
+  start_date = pd.Timestamp(year=2015, month=11, day=1)
   # end_date = pd.Timestamp(year=2016, month=1, day=25)
-  end_date = pd.Timestamp(year=2016, month=3, day=1)
+  end_date = pd.Timestamp(year=2015, month=12, day=1)
   time_lim = 300
 
   engine = create_engine('sqlite:///' + DATA_FILE)

@@ -19,6 +19,7 @@ class schedSurgery:
       self.ad = arrive_date
       self.dd = due_date
       self.priority = rng.uniform()
+      self.actual_mean = expected_duration
 
     def __repr__(self):
       return '<Surgery(n={0})>'.format(self.n)
