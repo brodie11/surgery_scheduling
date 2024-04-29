@@ -90,11 +90,15 @@ def get_solution(db_ses, strict_priority, transfers_allowed, min_undertime):
       .where(Solution.transfers_allowed == transfers_allowed)
       .where(Solution.min_undertime == min_undertime))
 
-  else:
+  elif min_undertime is not None:
 
     query = (db_ses.query(Solution)
       .where(Solution.strict_priority == strict_priority)
       .where(Solution.min_undertime == min_undertime))
+    
+  else:
+    query = (db_ses.query(Solution)
+      .where(Solution.strict_priority == strict_priority))
 
   return query.first()
 
