@@ -8,7 +8,6 @@ from scipy.stats import norm
 filepath = Path("output/databases/percentile_metrics.csv")
 df = pd.read_csv(filepath)
 
-
 # Creating subplots with multiple histograms
 data1 = df[df['percentile_column_name'] == 'duration_45th_percentile']
 data2 = df[df['percentile_column_name'] == 'duration_50th_percentile']
@@ -76,7 +75,7 @@ plt.legend()
 plt.show()
 
 plt.figure(figsize=(8, 6))
-sns.violinplot(x='percentile_column_name', y='average_surgery_utilisation', data=df)
+sns.violinplot(x='percentile_column_name', y='average_session_utilisation', data=df)
 plt.title('Average surgery utilisation scheduled for each percentile value')
 plt.xlabel('Percentile Values')
 plt.ylabel('Average surgery utilisation')
