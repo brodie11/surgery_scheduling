@@ -421,6 +421,7 @@ if __name__ == '__main__':
     current_datetime = datetime.now()
     # Format the date and time to string in 'YYYY-MM-DD HH:MM' format
     formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M')
+    date = formatted_datetime.split(" ")[0] + formatted_datetime.split(" ")[1].split(":")[0] + formatted_datetime.split(" ")[1].split(":")[1] #remove spaces
 
-    best_percentile_df.to_csv(os.path.join(OUTPUT_DB_DIR, "percentile_metrics" + formatted_datetime + ".csv"), index=False)
+    best_percentile_df.to_csv(os.path.join(OUTPUT_DB_DIR, "percentile_metrics" + date + ".csv"), index=False)
     
