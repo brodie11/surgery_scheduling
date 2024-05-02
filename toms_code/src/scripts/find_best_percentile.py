@@ -349,12 +349,15 @@ def simulate_stochastic_durations(schedDict:dict, start_date, end_date, percenti
 
 if __name__ == '__main__':
 
+    #set seed
+    np.random.seed(123)
+
     #set up pandas dataframe to store everything
     best_percentile_df = pd.DataFrame(columns = ["i", "percentile_column_name", "month_start", "num_surgeries_completed", "average_session_utilisation", "total_mins_overtime", "num_sessions_that_run_overtime", "num_sessions_with_cancelled_surgeries", "num_surgeries_cancelled"]
     )
 
     # Pick a few different percentile values to simulate for eg. (45,50,55,60,65)
-    percentile_values = [45,50,55,60,65]
+    percentile_values = [40,45,50,55,60,65]
     percentile_column_names = ['duration_45th_percentile', 'duration_50th_percentile', 'duration_55th_percentile', 'duration_60th_percentile', 'duration_65th_percentile']
 
 
@@ -393,7 +396,7 @@ if __name__ == '__main__':
             sched_sur_dict = generate_schedule_that_minimises_transfers_and_undertime(
                 percentile_value, month_start,month_start + pd.DateOffset(months=1),
                 turn_around = 15, specialty_id = specialty, facility = facility, time_lim = 300, 
-                solve_first_time=True)
+                solve_first_time=False)
             schedules.append((month_start,percentile_column_name,sched_sur_dict))
 
             #simulate durations 100 times
@@ -408,6 +411,8 @@ if __name__ == '__main__':
                     # append data to df
                 new_row = [j, percentile_column_name, month_start, num_surgeries_completed, average_surgery_utilisation, total_mins_overtime, num_sessions_that_run_overtime, num_sessions_with_cancelled_surgeries, num_surgeries_cancelled]
                 best_percentile_df.loc[len(best_percentile_df.index)] = new_row
+
+                
 
     print(best_percentile_df)
         
