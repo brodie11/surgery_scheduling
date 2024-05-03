@@ -9,7 +9,6 @@
 
 #loop through each week in weeks:
 
-
     #move new sessions from sessions_to_arrive to sessions
     #move new surgeries from new_arrivals to waitlist #TODO discuss maybe adding in overtime cancelled surgeries later?
     #create_schedule(wait_list, surgeries, perfect_information)

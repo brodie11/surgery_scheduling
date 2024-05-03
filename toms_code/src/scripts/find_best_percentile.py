@@ -358,7 +358,7 @@ if __name__ == '__main__':
 
     # Pick a few different percentile values to simulate for eg. (45,50,55,60,65)
     percentile_values = [40,45,50,55,60,65]
-    percentile_column_names = ['duration_45th_percentile', 'duration_50th_percentile', 'duration_55th_percentile', 'duration_60th_percentile', 'duration_65th_percentile']
+    percentile_column_names = ['duration_40th_percentile','duration_45th_percentile', 'duration_50th_percentile', 'duration_55th_percentile', 'duration_60th_percentile', 'duration_65th_percentile']
 
 
     #TODO figure out which facility is best to use
@@ -388,10 +388,14 @@ if __name__ == '__main__':
 
     # For each percentile value and month find the schedules. Then simulate the durations 100 times and calculate 
     # key metrics
+    for month_start in month_starts: #and each month
+        for i,percentile_column_name in enumerate(percentile_column_names): #for each percentile
+            percentile_value = percentile_values[i]
 
-    for i,percentile_column_name in enumerate(percentile_column_names): #for each percentile
-        percentile_value = percentile_values[i]
-        for month_start in month_starts: #and each month
+            print(f"\n\nMONTH: {month_start.strftime('%Y-%m-%d %X')}")
+            print(f"Percentile_value: {percentile_value}")
+            print(best_percentile_df[['num_surgeries_completed', 'num_surgeries_cancelled']].iloc[-10:,:])
+
             #Find the solution that has the fewest transfers while still minimising the undertime for given month and percentile
             sched_sur_dict = generate_schedule_that_minimises_transfers_and_undertime(
                 percentile_value, month_start,month_start + pd.DateOffset(months=1),
@@ -400,7 +404,7 @@ if __name__ == '__main__':
             schedules.append((month_start,percentile_column_name,sched_sur_dict))
 
             #simulate durations 100 times
-            num_runs = 100
+            num_runs = 300
             for j in range(num_runs):
                 #simulate 100 runs of sched_surgery_for_percentile
                 result = simulate_stochastic_durations(
