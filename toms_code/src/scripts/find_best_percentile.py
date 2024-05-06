@@ -299,8 +299,8 @@ def simulate_stochastic_durations(schedDict:dict, start_date, end_date, percenti
             
             surgeries.append(sur)
 
-        #sort surgeries from biggest to smallest for consistency in cancellations
-        surgeries = sorted(surgeries, key=lambda sur: sur.ed, reverse=True)
+        #sort surgeries from smallest to biggest for consistency in cancellations
+        surgeries = sorted(surgeries, key=lambda sur: sur.ed, reverse=False)
         
         for sur in surgeries:
             #get duration randomly from lognormal distribution and add to total duration
@@ -357,8 +357,8 @@ if __name__ == '__main__':
     )
 
     # Pick a few different percentile values to simulate for eg. (45,50,55,60,65)
-    percentile_values = [40,45,50,55,60,65]
-    percentile_column_names = ['duration_40th_percentile','duration_45th_percentile', 'duration_50th_percentile', 'duration_55th_percentile', 'duration_60th_percentile', 'duration_65th_percentile']
+    percentile_values = [40,45,50,55,60,65,70]
+    percentile_column_names = ['duration_40th_percentile','duration_45th_percentile', 'duration_50th_percentile', 'duration_55th_percentile', 'duration_60th_percentile', 'duration_65th_percentile','duration_70th_percentile']
 
 
     #TODO figure out which facility is best to use
