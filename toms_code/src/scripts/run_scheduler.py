@@ -12,6 +12,8 @@ from ..solution_classes import (Base, get_create_solution,
   create_update_solution_assignments,
   get_solution, get_ses_sur_dict, create_update_solution_transfers)
 from ..visualise import create_session_graph
+from ..classes import (schedSurgery, schedSession)
+from ..helper_funcs import (inconvenienceProb)
 
 
 if __name__ == '__main__':
@@ -62,6 +64,8 @@ if __name__ == '__main__':
     sched_sess = sorted(sched_sess, key=lambda x: x.sdt)
 
     session.commit()
+
+    inconvenienceProblem = inconvenienceProb(sched_surs, sched_sess, turn_around)
 
     # Create and solve the problem where priority is strictly enforced, no-one
     # can go ahead of someone if they are lower priority that them.
