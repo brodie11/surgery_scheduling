@@ -350,7 +350,7 @@ def simulate_stochastic_durations(schedDict:dict, start_date, end_date, percenti
 if __name__ == '__main__':
 
     #set seed
-    np.random.seed(456)
+    np.random.seed(789)
 
     #set up pandas dataframe to store everything
     best_percentile_df = pd.DataFrame(columns = ["i", "percentile_column_name", "month_start", "num_surgeries_completed", "average_session_utilisation", "total_mins_overtime", "num_sessions_that_run_overtime", "num_sessions_with_cancelled_surgeries", "num_surgeries_cancelled"]

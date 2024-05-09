@@ -72,14 +72,14 @@ class inconvenienceProb:
   # model.
   def __init__(self, surgeries, sessions, turn_around, time_lim=300, init_assign=None, perfect_information=False):
 
+    self.ops = deepcopy(surgeries)
+    self.sess = deepcopy(sessions)
+
     #add in dummy session to make problem feasible:
     last_sess = max(sessions, key=attrgetter('sdt'))
     print(f"last_sess.sdt {last_sess.sdt}")
     extra_sess_start = last_sess.sdt + 28
-    sessions.append(schedSession(-1, extra_sess_start, 999999, 0))
-
-    self.ops = deepcopy(surgeries)
-    self.sess = deepcopy(sessions)
+    self.sess.append(schedSession(-1, extra_sess_start, 999999, 0))
 
     self.priority_ops = sorted(self.ops, key=lambda x: x.priority, reverse=True)
     self.ordered_sess = sorted(self.sess, key=lambda x: x.sdt)
@@ -123,7 +123,7 @@ class inconvenienceProb:
 
     # Add the tardiness variables
     self.tardiness_inds = [(o.n) for o in self.ops]
-    self.tardiness = self.prob.addVars(self.tardiness_inds, vtype=GRB.INTEGER, lb=0.0,
+    self.tardiness = self.prob.addVars(self.tardiness_inds, vtype=GRB.INTEGER, lb=0,
       name='Tardiness')
 
 
@@ -132,8 +132,7 @@ class inconvenienceProb:
         for o in self.ops
         for s in self.sess))
 
-    #define objective function for tardiness #TODO check with Tom 
-    S = len(self.actual_sess)
+    #define objective function for tardiness #TODO uncomment and combine with above
     self.prob.setObjective(quicksum( self.tardiness[o.n]*self.x[o.n, s.n] 
         for o in self.ops
         for s in self.sess))
@@ -143,7 +142,6 @@ class inconvenienceProb:
       self.prob.addConstr(quicksum(self.x[o.n, s.n]
         for s in self.sess) == 1, name='Surgery_' + str(i))
 
-    
     #sum of surgery durations within session is less than or equals that session's duration
     for j, s in enumerate(self.sess):
       if s.n != -1:
@@ -151,20 +149,14 @@ class inconvenienceProb:
         self.prob.addConstr(quicksum(self.x[o.n, s.n] * int(o.ed + self.ta)  #
           for o in self.ops) - self.ta <= s.rhs,
           "session_duration_%s" % j)
-      else:
-        # Extra session
-        # Surgery duration + turn around <= session duration
-        self.prob.addConstr(quicksum(self.x[o.n, s.n] * int(o.ed + self.ta)  #
-          for o in self.ops) - self.ta <= s.rhs,
-          "session_duration_%s" % j)
 
     #each surgery's tardiness is greater than their scheduled time - expected time (and 0)
     for o in self.ops:
       if s.n != -1:
-        self.prob.addConstr(self.tardiness[o.n] >= quicksum( s.sdt*self.x[o.n, s.n] - o.dd for s in self.actual_sess))
+        self.prob.addConstr(self.tardiness[o.n] >= quicksum( self.x[o.n, s.n]*int(s.sdt - o.dd) for s in self.sess))
       else:
         #TODO decide penalty for not being scheduled
-        self.prob.addConstr(self.tardiness[o.n] >= quicksum( s.sdt*self.x[o.n, s.n] - o.dd for s in self.actual_sess))
+        self.prob.addConstr(self.tardiness[o.n] >= quicksum( self.x[o.n, s.n]*int(s.sdt - o.dd) for s in self.sess))
 
     #add inconvenient time constraints if perfect information
     #TODO
@@ -194,20 +186,19 @@ class inconvenienceProb:
         if c.IISConstr:
           print(c.ConstrName)
 
-    self.ses_sur_dict = {s.n: [] for s in self.sess}
+    self.ses_sur_dict = {s.n: [] for s in self.ordered_sess}
 
     for j, s in enumerate(self.ordered_sess):
       print('------------')
       if s.n != -1:
-        print(s.n, s.rhs, self.ut[s.n].X)
+        print(s.n, s.rhs)
       else:
         print(s.n, s.rhs)
       for i, o in enumerate(self.ops):
         if self.x[o.n, s.n].X > 0.99:
           self.ses_sur_dict[s.n].append(o.n)
-          print('Scheduled:', i, o.n, int(o.ed), o.priority)
-        if self.y[o.n, s.n].X > 0.99:
-          print('Transfer:', i, o.n, int(o.ed), o.priority)
+          # print('Scheduled:', i, o.n, int(o.ed), o.priority)
+    print(f"Tardiness: {self.tardiness}")
 
 # def create_schedule(sessions, surgeries, perfect_information = True):
     #TODO maybe don't consider disruption parameter for now? if so only need to generate for either 2 weeks or one week

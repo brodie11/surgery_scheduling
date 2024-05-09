@@ -77,7 +77,7 @@ def create_schedule_surs(partition_surs, simulation_start_date, simulation_end_d
 
   for part_sur in partition_surs.itertuples():
 
-    #turn dates into integer since simulation starts
+    #turn dates into integer repressenting dayss since simulation starts
     arrival_datetime_integer = (part_sur.arrival_datetime - simulation_start_date).days
 
     #create surgery objects
@@ -86,18 +86,18 @@ def create_schedule_surs(partition_surs, simulation_start_date, simulation_end_d
       arrival_datetime_integer + days_considered_tardy))
   
 
-  #select every surgery who entered the system before start date but left after and put them in waitlist
+  #select every surgery who entered the system before start date but left after and put them in initial waitlist
   #store these in surgery objects
   initial_waitlist = list(filter(lambda x: x.ad <= 0, surs))
   #select every surgery who entered the system after start date and before (end date + horizon) and put them
   #in the to_arrive list
-  #store these in surgery objects
   to_arrive_sorted = sorted(list(filter(lambda x: x.ad > 0, surs)), key=lambda x: x.ad)
+  #partition the list by week
   number_of_weeks = (simulation_end_date - simulation_start_date).days // 7
   to_arrive_partitioned = []
   for x in range(1, number_of_weeks + 1):
-    week_x = list(filter(lambda surgery: math.floor(surgery.ad / 7, to_arrive_sorted) <= x, to_arrive_sorted))
-    to_arrive_sorted = list(filter(lambda surgery: math.floor(surgery.ad / 7) > x, to_arrive_sorted))
+    week_x = list(filter(lambda surgery: surgery.ad // 7 <= x, to_arrive_sorted))
+    to_arrive_sorted = list(filter(lambda surgery: surgery.ad // 7 > x, to_arrive_sorted))
     to_arrive_partitioned.append(week_x)
 
   return initial_waitlist, to_arrive_partitioned
@@ -120,11 +120,11 @@ def create_schedule_sess(partition_sess, simulation_start_date, simulation_end_d
   number_of_days = (simulation_end_date - simulation_start_date).days
   sessions_to_schedule_for = list(filter(lambda x: x.sdt < number_of_days, all_sess))
   sessions_to_schedule_for_sorted = sorted(sessions_to_schedule_for, key = lambda x: x.sdt)
-  number_of_weeks = (simulation_end_date - simulation_start_date).days//7
+  number_of_weeks = number_of_days//7
   sessions_to_arrive_partitioned = []
   for x in range(1, number_of_weeks + 1):
     week_x = list(filter(lambda session: math.floor(session.sdt / 7) <= x, sessions_to_schedule_for_sorted))
-    sessions_to_schedule_for_sorted = list(filter(lambda session: math.floor(session.arrive_date / 7) > x, sessions_to_schedule_for_sorted))
+    sessions_to_schedule_for_sorted = list(filter(lambda session: math.floor(session.sdt / 7) > x, sessions_to_schedule_for_sorted))
     sessions_to_arrive_partitioned.append(week_x)
 
   return all_sess, sessions_to_arrive_partitioned

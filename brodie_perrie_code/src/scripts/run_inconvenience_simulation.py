@@ -39,7 +39,7 @@ week_starts = week_starts[0:-1]
 engine = create_engine('sqlite:///' + DATA_FILE)
 Session = sessionmaker(bind=engine)
 
-# Read in data from the database.
+# Get all sessions after start date and all surgeries that haven't left by start_date and arrive before end_date
 with Session() as session:
     surgeries, surgical_sessions, specialties = prepare_data(session,
         simulation_start_date, simulation_end_date)
@@ -58,6 +58,9 @@ surgical_sessions['start_time'] = pd.to_datetime(surgical_sessions['start_time']
 surgeries_initial_waitlist, surgeries_to_arrive_partitioned = create_schedule_surs(surgeries, simulation_start_date, simulation_end_date, days_considered_tardy)
 all_sess, sessions_to_arrive_partitioned = create_schedule_sess(surgical_sessions, simulation_start_date, simulation_end_date)
 
+number_patients_tardy = len(list(filter(lambda surgery: surgery.dd < 0, surgeries_initial_waitlist)))
+print(f"number of patients already tardy: {number_patients_tardy}")
+
 #loop through each week in weeks:
 waitlist = surgeries_initial_waitlist
 print(waitlist)
@@ -70,7 +73,9 @@ for week in range(1, weeks + 1):
     imperfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=False)
     #TODO count how many surgeries were cancelled due to patient preference
     print(perfect_info_schedule.ses_sur_dict)
-    sys.exit(0)
+
+    
+    
     #remove scheduled sessions from all_sess
     #move first 2 weeks of schedule to scheduled if first week, otherwise move first 1 week to scheduled
     #remove anything scheduled from waitlist
