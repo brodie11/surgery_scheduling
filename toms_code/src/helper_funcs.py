@@ -1,10 +1,69 @@
 from copy import deepcopy
+import numpy as np
 from gurobipy import Model, GRB, quicksum
 from operator import attrgetter
-import math
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+import os
 # from classes import *
 # from .solution_classes import (get_sessions, get_surgeries,
 #   get_solution_assignments)
+from .scheduler_utils import (read_database)
+from .classes import (schedSession, schedSurgery) #TODO make sure this down the bottom
+
+def create_schedule_surs(surgeries):
+  surs = []
+
+  for part_sur in surgeries.itertuples():
+    surs.append(schedSurgery(part_sur.Index, part_sur.predicted_duration,
+      part_sur.predicted_variance, part_sur.arrival_datetime,
+      part_sur.due_date_datetime))
+
+  return surs
+
+def create_schedule_sess(surgical_sessions, simulation_start_date):
+  sess = []
+
+  for part_ses in surgical_sessions.itertuples():
+
+    #TODO make it so sdt is an integer
+  
+    sess.append(schedSession(part_ses.Index, part_ses.start_time,
+      part_ses.duration, part_ses.theatre_number))
+
+  return sess
+
+def prepare_data(simulation_start_date, simulation_end_date, specialty_id, facility, horizon):
+
+  this_path = os.path.abspath(os.path.dirname(__file__))
+  DATABASE_DIR = os.path.abspath(os.path.join(this_path, os.pardir, 'data'))
+  DATA_FILE = os.path.join(DATABASE_DIR, 'surgery_data.db')
+
+  engine = create_engine('sqlite:///' + DATA_FILE)
+  Session = sessionmaker(bind=engine)
+  # Read in data from the database.
+  with Session() as session:
+
+      surgeries, surgical_sessions, specialties = read_database(session,
+        simulation_start_date, simulation_end_date)
+
+      valid_prediction = ~np.isnan(surgeries['predicted_duration'])
+      surgeries = surgeries.loc[valid_prediction]
+  
+  # Filter surgeries and sessions to the specialty and facility of interest.
+  surgeries = surgeries.loc[(surgeries['specialty_id'] == specialty_id) &
+    (surgeries['facility'] == facility)]
+  surgical_sessions = surgical_sessions.loc[(surgical_sessions['specialty_id'] == specialty_id) &
+    (surgical_sessions['facility'] == facility)]
+  
+  sched_surs = create_schedule_surs(surgeries, session)
+  sched_sess = create_schedule_sess(surgical_sessions, session)
+  
+  # surgeries.drop(columns=['anaesthesia_type', 'asa_rating', 'primary_procedure_id'], inplace=True)
+  # print(f"surgeries.columns.tolist() {surgeries.columns.tolist()}")
+  # print(f"surgical_sessions.columns.tolist() {surgical_sessions.columns.tolist()}")
+
+  return surgeries, surgical_sessions, specialties
 
 # Class that builds and solves the MIP models for scheduling.
 class inconvenienceProb:

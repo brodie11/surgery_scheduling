@@ -25,6 +25,7 @@ if __name__ == '__main__':
   turn_around = 15
   specialty_id = 2
   facility = 'C'
+  mid_term_horizon_months = 3
   start_date = pd.Timestamp(year=2015, month=11, day=1)
   # end_date = pd.Timestamp(year=2016, month=1, day=25)
   end_date = pd.Timestamp(year=2015, month=12, day=1)
@@ -33,10 +34,12 @@ if __name__ == '__main__':
   engine = create_engine('sqlite:///' + DATA_FILE)
   Session = sessionmaker(bind=engine)
 
+  end_date_plus_horizon = end_date + pd.DateOffset(months=3)
+
   # Read in data from the database.
   with Session() as session:
     surgeries, surgical_sessions, specialties = prepare_data(session,
-      start_date, end_date)
+      start_date, end_date, end_date_plus_horizon)
 
   # Use the parameters to set the name of the output database, and create it
   # if it deosn't already exist.
