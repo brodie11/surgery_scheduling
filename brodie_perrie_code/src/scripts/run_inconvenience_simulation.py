@@ -68,18 +68,29 @@ print(waitlist)
 weeks = (simulation_end_date - simulation_start_date).days // 7
 for week in range(1, weeks + 1):
     #move new surgeries from new_arrivals to waitlist #TODO discuss maybe adding in overtime cancelled surgeries later?
-    waitlist = waitlist + surgeries_to_arrive_partitioned.pop(0)
+    new_sessions = sessions_to_arrive_partitioned.pop(0)
+    new_surgeries = surgeries_to_arrive_partitioned.pop(0)
+    if new_sessions.empty():
+        continue #continue if no new sessions this week
+    waitlist = waitlist + new_sessions
+    #create schedules
     perfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=True)
     imperfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=False)
+
     #TODO count how many surgeries were cancelled due to patient preference
-    print(perfect_info_schedule.ses_sur_dict)
 
-    
-    
-    #remove scheduled sessions from all_sess
+    sess_sur_dict = perfect_info_schedule.ses_sur_dict
     #move first 2 weeks of schedule to scheduled if first week, otherwise move first 1 week to scheduled
-    #remove anything scheduled from waitlist
+    if week == 1:
+        scheduled_sessions = new_sessions + sessions_to_arrive_partitioned.pop(0)
+    else:
+        scheduled_sessions = new_sessions
 
+    #remove sessions from all_sess and surgeries from waitlist
+    for scheduled_session in scheduled_sessions:
+        ids_of_surgery_scheduled = sess_sur_dict[scheduled_session]
+        waitlist = [surgery for surgery in waitlist if surgery.n not in ids_of_surgery_scheduled]
+    all_sess = [session for session in all_sess if session.n not in scheduled_sessions]
 #compare the two schedules
 
 
