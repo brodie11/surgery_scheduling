@@ -262,7 +262,7 @@ def create_update_solution_transfers(db_ses, sol_id, prob):
 
       if sol_transfer is None:
         sol_transfer = SolutionTransfer(surgery_id=sur.n, session_id=ses.n,
-          solution_id=sol_id, transfer_justified=prob.y[sur.n, ses.n].X)
+          solution_id=sol_id, transfer_justified=prob.tardiness[sur.n].X)
         db_ses.add(sol_transfer)
 
       else:

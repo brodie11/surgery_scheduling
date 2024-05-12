@@ -71,7 +71,7 @@ def prepare_data(session, start_date, end_date):
 
 # Takes the surgeries from the database and creates the objects used in
 # scheduling.
-def create_schedule_surs(partition_surs, simulation_start_date, simulation_end_date, days_considered_tardy):
+def create_schedule_partition_surs(partition_surs, simulation_start_date, simulation_end_date, days_considered_tardy):
 
   surs = []
 
@@ -105,7 +105,7 @@ def create_schedule_surs(partition_surs, simulation_start_date, simulation_end_d
 # Takes the sessions from the database and creates the objects used in
 # scheduling. Also adds a large session at the end to ensure the problem is
 # feasible.
-def create_schedule_sess(partition_sess, simulation_start_date, simulation_end_date):
+def create_schedule_partition_sess(partition_sess, simulation_start_date, simulation_end_date):
 
   #select every session ever (after start date and put that in seperate list)
   all_sess = []
