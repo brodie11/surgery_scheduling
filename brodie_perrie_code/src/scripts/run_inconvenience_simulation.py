@@ -101,6 +101,7 @@ for week in range(1, weeks + 1):
             #this is the class that solves the linear program
             perfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=True, time_lim=300)
             # imperfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=False) 
+            
             #TODO solve the imprefect information problem also
 
             print("solved")

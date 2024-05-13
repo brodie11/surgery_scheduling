@@ -145,7 +145,7 @@ class inconvenienceProb:
     #sum of surgery durations within session is less than or equals that session's duration
     for j, s in enumerate(self.sess):
       if s.n != -1:
-        # Surgery duration + turn around + undertime = session duration
+        # Surgery duration + turn around = session duration
         self.prob.addConstr(quicksum(self.x[o.n, s.n] * int(o.ed + self.ta)  #
           for o in self.ops) - self.ta <= s.rhs,
           "session_duration_%s" % j)
@@ -223,3 +223,12 @@ class inconvenienceProb:
         #TODO add times in later
         #if clash
             #remove from schedule. add back in to waitlist #TODO (enforce that they have to be solved first week?)
+
+
+#NEXT STEPS
+# simulate for surgeries that run too long
+# implement warm starts from previous week's schedules
+# experiment with different objective functions/normalisation parameters
+
+# disruption parameter
+# add in inconvenient times as well as weeks or days
