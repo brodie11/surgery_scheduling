@@ -1,3 +1,5 @@
+import sys
+
 from copy import deepcopy
 import numpy as np
 from gurobipy import Model, GRB, quicksum
@@ -123,14 +125,14 @@ class inconvenienceProb:
 
     # Add the tardiness variables
     self.tardiness_inds = [(o.n) for o in self.ops]
-    self.tardiness = self.prob.addVars(self.tardiness_inds, vtype=GRB.INTEGER, lb=0,
+    self.tardiness = self.prob.addVars(self.tardiness_inds, vtype=GRB.CONTINUOUS, lb=0,
       name='Tardiness')
 
 
-   #define objective function for high priority #TODO incorporate and normalise
-    self.prob.setObjective(quicksum( (o.priority/s.sdt) * self.x[o.n, s.n]
-        for o in self.ops
-        for s in self.sess))
+  #  #define objective function for high priority #TODO incorporate and normalise
+  #   self.prob.setObjective(quicksum( (o.priority/s.sdt) * self.x[o.n, s.n]
+  #       for o in self.ops
+  #       for s in self.sess))
 
     #define objective function for tardiness #TODO uncomment and combine with above
     self.prob.setObjective(quicksum( self.tardiness[o.n]*self.x[o.n, s.n] 
@@ -152,10 +154,6 @@ class inconvenienceProb:
 
     #each surgery's tardiness is greater than their scheduled time - due date (and 0)
     for o in self.ops:
-      if s.n != -1:
-        self.prob.addConstr(self.tardiness[o.n] >= quicksum( self.x[o.n, s.n]*int(s.sdt - o.dd) for s in self.sess))
-      else:
-        #TODO decide penalty for not being scheduled
         self.prob.addConstr(self.tardiness[o.n] >= quicksum( self.x[o.n, s.n]*int(s.sdt - o.dd) for s in self.sess))
 
     #add inconvenient time constraints if perfect information
@@ -204,7 +202,7 @@ class inconvenienceProb:
     #TODO maybe don't consider disruption parameter for now? if so only need to generate for either 2 weeks or one week
     #TODO in that vain - could use a warm start?
 
-    #obj function: #TODO agree on this with Perrie
+    #obj function: #TODO agree on this with 
 
     
 

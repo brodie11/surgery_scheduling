@@ -101,7 +101,7 @@ for week in range(1, weeks + 1):
             #this is the class that solves the linear program
             perfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=True, time_lim=300)
             # imperfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=False) 
-            
+
             #TODO solve the imprefect information problem also
 
             print("solved")
@@ -120,8 +120,9 @@ for week in range(1, weeks + 1):
             # perfect_info_schedule)
 
             print("solution updated")
-
-        sess_sur_dict = get_ses_sur_dict(session, inconvenience_sol.id)
+            sess_sur_dict = perfect_info_schedule.ses_sur_dict
+        else:
+            sess_sur_dict = get_ses_sur_dict(session, inconvenience_sol.id)
 
     #TODO count how many surgeries were cancelled due to patient preference
 
