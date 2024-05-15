@@ -12,7 +12,7 @@ rng = Generator(PCG64(891011))
 # Class for surgeries used while scheduling.
 class schedSurgery:
     def __init__(self, name, expected_duration, duration_variance,
-      arrive_date, due_date):
+      arrive_date, due_date, cdi=0.083):
 
       self.n = int(name)
       self.ed = expected_duration
@@ -23,7 +23,7 @@ class schedSurgery:
       self.actual_mean = expected_duration
 
       #properties to do with inc
-      self.chance_of_day_week_month_preference = 0.083 #should result in CDI (cancellation due to inconvenince) rate of 2.5%
+      self.chance_of_day_week_month_preference = cdi #should result in CDI (cancellation due to inconvenince) rate of 2.5%
       self.day_banned = self.get_inconvenient_day()
       self.weeks_banned = self.get_inconvenient_weeks()
       self.month_banned = self.get_inconvenient_month()

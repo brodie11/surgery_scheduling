@@ -169,6 +169,10 @@ def get_solution_session_surs(db_ses, sol_id, ses_id):
 
 def get_ses_sur_dict(db_ses, sol_id):
 
+  print("get_ses_sur_dict")
+  print(f"db_ses{db_ses}")
+  print(f"sol_id{sol_id}")
+
   sessions = get_sessions(db_ses)
   
   ses_sur_dict = {}

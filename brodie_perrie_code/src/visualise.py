@@ -17,11 +17,7 @@ pyp.style.use(os.path.join(OUTPUT_FIG_DIR, 'presentation.mplstyle'))
 def create_session_graph(solution, db_ses, fig_name):
 
   sol_assigns = get_solution_assignments(db_ses, solution.id)
-  sol_transfers = get_solution_transfers(db_ses, solution.id)
-  if sol_transfers.shape[0] == 0:
-    sol_transfers = None
-  else:
-    sol_transfers = sol_transfers.groupby('surgery_id')['transfer_justified'].sum()
+  sol_transfers = None
 
   sessions = get_sessions(db_ses)
   sessions = sessions.sort_values('start_datetime')

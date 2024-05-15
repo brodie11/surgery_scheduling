@@ -15,12 +15,14 @@ from ..solution_classes import (Base, get_create_solution,
 from ..visualise import create_session_graph
 from ..classes import (schedSurgery, schedSession)
 from ..helper_funcs import (inconvenienceProb)
+from ..solution_classes import get_create_sur, get_create_ses
 
 
 #choose specialty, faclility, turn_around, etc.
-specialty_id = 4
-facility = "A"
+specialty_id = 0
+facility = "B"
 turn_around = 15
+chance_of_inconvenience_for_each_day_month_week = 0.083
 #set to true if you want to manually resolve each gurobi problem and ignore stored solutions
 solve_anyway = True
 #set how long it takes for someone to be considered tardy
@@ -49,12 +51,8 @@ surgeries = surgeries.loc[(surgeries['specialty_id'] == specialty_id) &
 surgical_sessions = surgical_sessions.loc[(surgical_sessions['specialty_id'] == specialty_id) &
     (surgical_sessions['facility'] == facility)]
 
-#ensure everything is pd.date_time
-surgeries['arrival_datetime'] = pd.to_datetime(surgeries['arrival_datetime'])
-surgical_sessions['start_time'] = pd.to_datetime(surgical_sessions['start_time'])
-
 #partition data
-surgeries_initial_waitlist, surgeries_to_arrive_partitioned = create_schedule_partition_surs(surgeries, simulation_start_date, simulation_end_date, days_considered_tardy)
+surgeries_initial_waitlist, surgeries_to_arrive_partitioned = create_schedule_partition_surs(surgeries, simulation_start_date, simulation_end_date, days_considered_tardy, chance_of_inconvenience_for_each_day_month_week)
 all_sess, sessions_to_arrive_partitioned = create_schedule_partition_sess(surgical_sessions, simulation_start_date, simulation_end_date)
 
 #count patients already tardy at start
@@ -66,6 +64,9 @@ waitlist = surgeries_initial_waitlist
 #loop through each week in weeks:
 weeks = (simulation_end_date - simulation_start_date).days // 7
 for week in range(1, weeks + 1):
+
+    perfect_info_bool = True #eventually run for both at once
+
     #move new surgeries from new_arrivals to waitlist #TODO discuss maybe adding in overtime cancelled surgeries later?
     new_sessions = []
     new_surgeries = []
@@ -84,18 +85,27 @@ for week in range(1, weeks + 1):
     #CREATE SCHEDULES
 
     #set up session to store specific week
-    db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}.db'.format(specialty_id,
-    simulation_start_date.date(), simulation_end_date.date(), "tardiness", week)
+    perfect_info_string = "False"
+    if perfect_info_bool == True: perfect_info_string = "True"
+
+    db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_perfect_info_{5}.db'.format(specialty_id,
+    simulation_start_date.date(), simulation_end_date.date(), week, "tardiness",  perfect_info_string)
     db_name = os.path.join(OUTPUT_DB_DIR, db_name)
+
     engine = create_engine('sqlite:///' + db_name)
     Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
 
+    Session = sessionmaker(bind=engine)
     with Session() as session:
 
         #get solution and check if already been solved
         inconvenience_sol = get_solution(session, 10, 10, 10) #fudge a little bit so I don't have to rewrite Tom's code
         if inconvenience_sol is None or solve_anyway == True:
+
+            for surgery in waitlist:
+                get_create_sur(session, surgery.n, surgery.ed, surgery.priority)
+            for sess in all_sess:
+                get_create_ses(session, sess.n, simulation_start_date + pd.Timedelta(days=sess.sdt), sess.tn, sess.sd)
 
             #otherwise, solve it
             #this is the class that solves the linear program
@@ -104,32 +114,28 @@ for week in range(1, weeks + 1):
 
             #TODO solve the imprefect information problem also
 
-            print("solved")
-
             #store solution in fudged way so don't have to rewrite Tom's code
             inconvenience_sol = get_create_solution(session, 10,
             10, 10, 0)
 
-            print("stored")
-
             #update database
             create_update_solution_assignments(session, inconvenience_sol.id,
             perfect_info_schedule.ses_sur_dict)
-            print("solution_assignments_updated")
-            # create_update_solution_transfers(session, inconvenience_sol.id,
-            # perfect_info_schedule)
+            # sess_sur_dict = perfect_info_schedule.ses_sur_dict
+        # else:
+        sess_sur_dict = get_ses_sur_dict(session, inconvenience_sol.id) #TODO test if this works
 
-            print("solution updated")
-            sess_sur_dict = perfect_info_schedule.ses_sur_dict
-        else:
-            sess_sur_dict = get_ses_sur_dict(session, inconvenience_sol.id)
+        print(sess_sur_dict)
+
+        #graph
+        graph_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_perfect_info_{5}.db'.format(specialty_id,
+        simulation_start_date.date(), simulation_end_date.date(), week, "tardiness",  perfect_info_string)
+        create_session_graph(inconvenience_sol, session, graph_name)
 
     #TODO count how many surgeries were cancelled due to patient preference
 
     #move first 2 weeks of schedule to scheduled if first week, otherwise move first 1 week to scheduled
     scheduled_sessions = new_sessions
-    
-    print(sess_sur_dict)
 
     #remove scheduled sessions from all_sess and scheduled surgeries from waitlist
     for scheduled_session in scheduled_sessions:

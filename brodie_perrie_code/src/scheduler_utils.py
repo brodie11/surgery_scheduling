@@ -71,7 +71,7 @@ def prepare_data(session, start_date, end_date):
 
 # Takes the surgeries from the database and creates the objects used in
 # scheduling.
-def create_schedule_partition_surs(partition_surs, simulation_start_date, simulation_end_date, days_considered_tardy):
+def create_schedule_partition_surs(partition_surs, simulation_start_date, simulation_end_date, days_considered_tardy, cdi):
 
   surs = []
 
@@ -83,7 +83,9 @@ def create_schedule_partition_surs(partition_surs, simulation_start_date, simula
     #create surgery objects
     surs.append(schedSurgery(part_sur.Index, part_sur.predicted_duration,
       part_sur.predicted_variance, arrival_datetime_integer,
-      arrival_datetime_integer + days_considered_tardy))
+      arrival_datetime_integer + days_considered_tardy, cdi=cdi))
+    # get_create_sur(session, part_sur.Index, part_sur.predicted_duration,
+    #   surs[-1].priority)
   
 
   #select every surgery who entered the system before start date but left after and put them in initial waitlist
@@ -115,6 +117,8 @@ def create_schedule_partition_sess(partition_sess, simulation_start_date, simula
   
     all_sess.append(schedSession(part_ses.Index, start_time_integer,
       part_ses.duration, part_ses.theatre_number))
+    # get_create_ses(session, part_ses.Index, part_ses.start_time,
+    #   part_ses.theatre_number, part_ses.duration)
   
   #select every session between start and end date and add to sessions_to_arrive_partitioned by week
   number_of_days = (simulation_end_date - simulation_start_date).days
