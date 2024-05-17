@@ -5,9 +5,9 @@ import math
 
 from datetime import timedelta
 
-from .data_classes import (Surgery, SurgicalSession, Specialty)
-from .scheduler_classes import (schedSurgery, schedSession)
-from .solution_classes import get_create_sur, get_create_ses
+from data_classes import (Surgery, SurgicalSession, Specialty)
+from scheduler_classes import (schedSurgery, schedSession)
+from solution_classes import get_create_sur, get_create_ses
 
 
 # Reads in the surgeries, sessions, and specialties from the database, and

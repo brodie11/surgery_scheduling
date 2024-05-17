@@ -1,21 +1,30 @@
 import os
 import sys
 
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import pandas as pd
 
-from ..configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
-from ..scheduler_utils import (
+# Perrie's path 
+repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/brodie_perrie_code/src")
+
+# Brodie;s path 
+# TODO: add path to src directory and comment out my path. You can then run and debug. 
+
+sys.path.append(str(repo_path))
+from configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
+from configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
+from scheduler_utils import (
   prepare_data, create_schedule_partition_surs, create_schedule_partition_sess)
-from ..scheduler_classes import (schedProb, priorityProb)
-from ..solution_classes import (Base, get_create_solution,
+from scheduler_classes import (schedProb, priorityProb)
+from solution_classes import (Base, get_create_solution,
   create_update_solution_assignments,
   get_solution, get_ses_sur_dict, create_update_solution_transfers)
-from ..visualise import create_session_graph
-from ..classes import (schedSurgery, schedSession)
-from ..helper_funcs import (inconvenienceProb)
-from ..solution_classes import get_create_sur, get_create_ses
+from visualise import create_session_graph
+from classes import (schedSurgery, schedSession)
+from helper_funcs import (inconvenienceProb)
+from solution_classes import get_create_sur, get_create_ses
 
 
 #choose specialty, faclility, turn_around, etc.
@@ -112,7 +121,7 @@ for week in range(1, weeks + 1):
             perfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=True, time_lim=300)
             # imperfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=False) 
 
-            #TODO solve the imprefect information problem also
+            #TODO solve the imperfect information problem also
 
             #store solution in fudged way so don't have to rewrite Tom's code
             inconvenience_sol = get_create_solution(session, 10,
