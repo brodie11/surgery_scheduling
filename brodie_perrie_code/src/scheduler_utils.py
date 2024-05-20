@@ -120,6 +120,9 @@ def create_schedule_partition_sess(partition_sess, simulation_start_date, simula
     # get_create_ses(session, part_ses.Index, part_ses.start_time,
     #   part_ses.theatre_number, part_ses.duration)
   
+  #sort all_sess
+  all_sess = sorted(all_sess, key=lambda x: x.sdt)
+  
   #select every session between start and end date and add to sessions_to_arrive_partitioned by week
   number_of_days = (simulation_end_date - simulation_start_date).days
   sessions_to_schedule_for = list(filter(lambda x: x.sdt < number_of_days, all_sess))
@@ -130,5 +133,6 @@ def create_schedule_partition_sess(partition_sess, simulation_start_date, simula
     week_x = list(filter(lambda session: math.floor(session.sdt / 7) <= x, sessions_to_schedule_for_sorted))
     sessions_to_schedule_for_sorted = list(filter(lambda session: math.floor(session.sdt / 7) > x, sessions_to_schedule_for_sorted))
     sessions_to_arrive_partitioned.append(week_x)
+
 
   return all_sess, sessions_to_arrive_partitioned

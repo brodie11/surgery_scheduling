@@ -68,14 +68,82 @@ from classes import (schedSession, schedSurgery) #TODO make sure this down the b
 
 #   return surgeries, surgical_sessions, specialties
 
+def print_detailed_ses_sur_dict(sess_sur_dict, waitlist, plenty_of_sess, turn_around):
+    
+    print(f"sess ssur dict!!!")
+    print(sess_sur_dict)
+   #for each session in dictionary
+    for session_id, surgery_array in sess_sur_dict.items():
+        print(f"session id {session_id}") 
+        #get info about this session such as duration
+        sess_matches = [session for session in plenty_of_sess if session.n == session_id]
+        sess = sess_matches[0]
+        session_duration = sess.sd
+        combined_surgery_duration = 0
+        #get surgeries and order them from biggest to smallest
+        surgeries = []
+        print(f"session duration {session_duration}")
+        print(f"session sdt {sess.sdt}")
+        #make sure session has surgeries assigned to it
+        if len(surgery_array) == 0:
+           continue
+        for surgery_id in surgery_array:
+            sur = [sur for sur in waitlist if sur.n == surgery_id][0]
+            surgeries.append(sur)
+
+        for surg in surgeries:
+           print(f"     Surgery id: {surg.n}, surgery ad: {surg.ad}, surgery dd: {surg.dd}, surgery duration: {surg.ed}")
+           combined_surgery_duration += surg.ed + turn_around
+
+        print(f"  combined surgery durations for session {session_id} is {combined_surgery_duration - turn_around}")
+         
+def compute_metrics(waitlist, ids_of_surgery_scheduled, scheduled_sessions, week):
+    # Scheduled surgeries from waitlist
+    scheduled_surgeries = [s for s in waitlist if s.n in ids_of_surgery_scheduled]
+
+    total_tardiness = 0
+    number_patients_tardy = 0
+    total_waittime_p33 = 0
+    total_waittime_p66 = 0
+    total_waittime_p100 = 0
+    num_surs_scheduled = len(scheduled_surgeries)
+
+    for surgery in scheduled_surgeries:
+        tardiness = max(0, week - surgery.dd)
+        total_tardiness += tardiness
+        if tardiness > 0:
+            number_patients_tardy += 1
+
+        wait_time = week+1 - surgery.ad
+        if surgery.priority <= 0.33:
+            total_waittime_p33 += wait_time
+        elif surgery.priority <= 0.66:
+            total_waittime_p66 += wait_time
+        else:
+            total_waittime_p100 += wait_time
+
+    # Calculate average wait times
+    if num_surs_scheduled > 0:
+        average_waittime_p33 = total_waittime_p33 / num_surs_scheduled
+        average_waittime_p66 = total_waittime_p66 / num_surs_scheduled
+        average_waittime_p100 = total_waittime_p100 / num_surs_scheduled
+    else:
+        average_waittime_p33 = average_waittime_p66 = average_waittime_p100 = 0
+    
+    num_sessions = len(scheduled_sessions)
+
+    return total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions
+
 # Class that builds and solves the MIP models for scheduling.
 class inconvenienceProb:
   # Copy and sort the surgeries and sessions, build the model, then solve the
   # model.
-  def __init__(self, surgeries, sessions, turn_around, time_lim=300, init_assign=None, perfect_information=False):
+  def __init__(self, surgeries, sessions, turn_around, obj_type, time_lim=300, init_assign=None, perfect_information=False):
 
     self.ops = deepcopy(surgeries)
     self.sess = deepcopy(sessions)
+
+    print(f"self.sess {self.sess}")
 
     #add in dummy session to make problem feasible:
     last_sess = max(sessions, key=attrgetter('sdt'))
@@ -97,6 +165,8 @@ class inconvenienceProb:
 
     self.ta = turn_around
     self.time_lim = time_lim
+
+    self.obj_type = obj_type
 
     self.prob = 0
     self.obj = 0
@@ -127,17 +197,16 @@ class inconvenienceProb:
     self.tardiness_inds = [(o.n) for o in self.ops]
     self.tardiness = self.prob.addVars(self.tardiness_inds, vtype=GRB.CONTINUOUS, lb=0,
       name='Tardiness')
-
-
-  #  #define objective function for high priority #TODO incorporate and normalise
-  #   self.prob.setObjective(quicksum( (o.priority/s.sdt) * self.x[o.n, s.n]
-  #       for o in self.ops
-  #       for s in self.sess))
-
-    #define objective function for tardiness #TODO uncomment and combine with above
-    self.prob.setObjective(quicksum( self.tardiness[o.n]*self.x[o.n, s.n] 
-        for o in self.ops
-        for s in self.sess))
+    
+    if self.obj_type == "tardiness":
+      #define objective function for tardiness #TODO uncomment and combine with above
+      self.prob.setObjective(quicksum( self.tardiness[o.n]*self.x[o.n, s.n] #- (o.priority/s.sdt) * self.x[o.n, s.n]
+          for o in self.ops
+          for s in self.sess))
+    elif self.obj_type == "tardiness and priority":
+      self.prob.setObjective(quicksum( self.tardiness[o.n]*self.x[o.n, s.n] - (o.priority/s.sdt) * self.x[o.n, s.n]
+          for o in self.ops
+          for s in self.sess))
 
     # Each surgery is performed once.
     for i, o in enumerate(self.ops):
@@ -184,14 +253,9 @@ class inconvenienceProb:
         if c.IISConstr:
           print(c.ConstrName)
 
-    self.ses_sur_dict = {s.n: [] for s in self.ordered_sess}
+    self.ses_sur_dict = {s.n: [] for s in self.sess}
 
-    for j, s in enumerate(self.ordered_sess):
-      print('------------')
-      if s.n != -1:
-        print(s.n, s.rhs)
-      else:
-        print(s.n, s.rhs)
+    for j, s in enumerate(self.sess):
       for i, o in enumerate(self.ops):
         if self.x[o.n, s.n].X > 0.99:
           self.ses_sur_dict[s.n].append(o.n)
