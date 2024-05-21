@@ -23,13 +23,13 @@ from solution_classes import (Base, get_create_solution,
   get_solution, get_ses_sur_dict, create_update_solution_transfers)
 from visualise import create_session_graph
 from classes import (schedSurgery, schedSession)
-from helper_funcs import (inconvenienceProb)
+from helper_funcs import (inconvenienceProb, is_surgery_inconvenient)
 from solution_classes import get_create_sur, get_create_ses
 
 
 #choose specialty, faclility, turn_around, etc.
-specialty_id = 0
-facility = "B"
+specialty_id = 4
+facility = "A"
 turn_around = 15
 chance_of_inconvenience_for_each_day_month_week = 0.083
 #set to true if you want to manually resolve each gurobi problem and ignore stored solutions
@@ -83,8 +83,9 @@ for week in range(1, weeks + 1):
         new_sessions = sessions_to_arrive_partitioned.pop(0) + sessions_to_arrive_partitioned.pop(0)
         new_surgeries = surgeries_to_arrive_partitioned.pop(0) + surgeries_to_arrive_partitioned.pop(0)
     else:
-        new_sessions = sessions_to_arrive_partitioned.pop(0)
-        new_surgeries = surgeries_to_arrive_partitioned.pop(0)
+        if sessions_to_arrive_partitioned:
+            new_sessions = sessions_to_arrive_partitioned.pop(0)
+            new_surgeries = surgeries_to_arrive_partitioned.pop(0)
 
     if not new_sessions:
         continue #continue if no new sessions this week
@@ -97,7 +98,7 @@ for week in range(1, weeks + 1):
     perfect_info_string = "False"
     if perfect_info_bool == True: perfect_info_string = "True"
 
-    db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_perfect_info_{5}.db'.format(specialty_id,
+    db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_imperfect_info_{5}.db'.format(specialty_id,
     simulation_start_date.date(), simulation_end_date.date(), week, "tardiness",  perfect_info_string)
     db_name = os.path.join(OUTPUT_DB_DIR, db_name)
 
@@ -118,10 +119,25 @@ for week in range(1, weeks + 1):
 
             #otherwise, solve it
             #this is the class that solves the linear program
-            perfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=True, time_lim=300)
-            # imperfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=False) 
+            # perfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=True, time_lim=300)
+            imperfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=False, time_lim=300) 
 
             #TODO solve the imperfect information problem also
+            for imperfect_sessions in imperfect_info_schedule.ses_sur_dict.keys():
+                if imperfect_sessions == -1:
+                    break
+                sess_sched_obj = list(filter(lambda obj: obj.n == imperfect_sessions, all_sess))[0]
+                # get surgeries in session
+                surgeries_in_session = imperfect_info_schedule.ses_sur_dict[imperfect_sessions]
+                for surgery in surgeries_in_session:
+                    surgery_sched_obj = list(filter(lambda obj: obj.n == surgery, waitlist))[0]
+                    # check if inconvenient
+                    inconvenient = is_surgery_inconvenient(sess_sched_obj.sdt, simulation_start_date, surgery_sched_obj)
+                    if inconvenient:
+                        # cancel surgery
+                        imperfect_info_schedule.ses_sur_dict[imperfect_sessions].remove(surgery)
+                        # Need to check if more needs to be done to cancel a surgery
+                        
 
             #store solution in fudged way so don't have to rewrite Tom's code
             inconvenience_sol = get_create_solution(session, 10,
@@ -129,7 +145,7 @@ for week in range(1, weeks + 1):
 
             #update database
             create_update_solution_assignments(session, inconvenience_sol.id,
-            perfect_info_schedule.ses_sur_dict)
+            imperfect_info_schedule.ses_sur_dict)
             # sess_sur_dict = perfect_info_schedule.ses_sur_dict
         # else:
         sess_sur_dict = get_ses_sur_dict(session, inconvenience_sol.id) #TODO test if this works
