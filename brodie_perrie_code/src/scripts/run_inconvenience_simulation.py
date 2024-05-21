@@ -13,25 +13,17 @@ repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniver
 # TODO: add path to src directory and comment out my path. You can then run and debug. 
 
 sys.path.append(str(repo_path))
-from configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
-from configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
-from scheduler_utils import (
+from ..configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
+from ..scheduler_utils import (
   prepare_data, create_schedule_partition_surs, create_schedule_partition_sess)
-from scheduler_classes import (schedProb, priorityProb)
-from solution_classes import (Base, get_create_solution,
+from ..scheduler_classes import (schedProb, priorityProb)
+from ..solution_classes import (Base, get_create_solution,
   create_update_solution_assignments,
   get_solution, get_ses_sur_dict, create_update_solution_transfers)
-<<<<<<< Updated upstream
-from visualise import create_session_graph
-from classes import (schedSurgery, schedSession)
-from helper_funcs import (inconvenienceProb)
-from solution_classes import get_create_sur, get_create_ses
-=======
 from ..visualise import create_session_graph
 from ..classes import (schedSurgery, schedSession)
 from ..helper_funcs import (inconvenienceProb, compute_metrics, print_detailed_ses_sur_dict)
 from ..solution_classes import get_create_sur, get_create_ses
->>>>>>> Stashed changes
 
 #choose specialty, faclility, turn_around, etc.
 specialty_id = 4
@@ -91,8 +83,6 @@ waitlist = surgeries_initial_waitlist
 #loop through each week in weeks:
 weeks = (simulation_end_date - simulation_start_date).days // 7
 for week in range(1, weeks + 1):
-
-    if week == 10:break
 
     print(f"\n\nWeek {week}\n------------------------------------------------")
 

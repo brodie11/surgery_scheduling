@@ -11,8 +11,8 @@ import math
 # from classes import *
 # from .solution_classes import (get_sessions, get_surgeries,
 #   get_solution_assignments)
-from scheduler_utils import (read_database)
-from classes import (schedSession, schedSurgery) #TODO make sure this down the bottom
+from .scheduler_utils import (read_database)
+from .classes import (schedSession, schedSurgery) #TODO make sure this down the bottom
 
 # def create_schedule_surs(surgeries):
 #   surs = []

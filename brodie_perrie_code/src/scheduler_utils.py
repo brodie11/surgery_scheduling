@@ -5,9 +5,9 @@ import math
 
 from datetime import timedelta
 
-from data_classes import (Surgery, SurgicalSession, Specialty)
-from scheduler_classes import (schedSurgery, schedSession)
-from solution_classes import get_create_sur, get_create_ses
+from .data_classes import (Surgery, SurgicalSession, Specialty)
+from .scheduler_classes import (schedSurgery, schedSession)
+from .solution_classes import get_create_sur, get_create_ses
 
 
 # Reads in the surgeries, sessions, and specialties from the database, and
@@ -130,8 +130,8 @@ def create_schedule_partition_sess(partition_sess, simulation_start_date, simula
   number_of_weeks = number_of_days//7
   sessions_to_arrive_partitioned = []
   for x in range(1, number_of_weeks + 1):
-    week_x = list(filter(lambda session: math.floor(session.sdt / 7) <= x, sessions_to_schedule_for_sorted))
-    sessions_to_schedule_for_sorted = list(filter(lambda session: math.floor(session.sdt / 7) > x, sessions_to_schedule_for_sorted))
+    week_x = list(filter(lambda session: session.sdt / 7 <= x, sessions_to_schedule_for_sorted))
+    sessions_to_schedule_for_sorted = list(filter(lambda session: session.sdt / 7 > x, sessions_to_schedule_for_sorted))
     sessions_to_arrive_partitioned.append(week_x)
 
 
