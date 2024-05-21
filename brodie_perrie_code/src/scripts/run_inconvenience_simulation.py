@@ -22,7 +22,7 @@ from ..solution_classes import (Base, get_create_solution,
   get_solution, get_ses_sur_dict, create_update_solution_transfers)
 from ..visualise import create_session_graph
 from ..classes import (schedSurgery, schedSession)
-from ..helper_funcs import (inconvenienceProb, compute_metrics, print_detailed_ses_sur_dict)
+from ..helper_funcs import (inconvenienceProb, compute_metrics, print_detailed_ses_sur_dict,is_surgery_inconvenient)
 from ..solution_classes import get_create_sur, get_create_ses
 
 #choose specialty, faclility, turn_around, etc.
@@ -95,11 +95,9 @@ for week in range(1, weeks + 1):
         new_sessions = sessions_to_arrive_partitioned.pop(0) + sessions_to_arrive_partitioned.pop(0)
         new_surgeries = surgeries_to_arrive_partitioned.pop(0) + surgeries_to_arrive_partitioned.pop(0)
     else:
-        try:
+        if sessions_to_arrive_partitioned:
             new_sessions = sessions_to_arrive_partitioned.pop(0)
             new_surgeries = surgeries_to_arrive_partitioned.pop(0)
-        except:
-            break
 
     if not new_sessions:
         continue #continue if no new sessions this week
@@ -139,10 +137,25 @@ for week in range(1, weeks + 1):
 
             #otherwise, solve it
             #this is the class that solves the linear program
-            perfect_info_schedule = inconvenienceProb(waitlist, plenty_of_sess, turn_around, obj_type=obj_type, perfect_information=True, time_lim=30)
-            # imperfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=False) 
+            #perfect_info_schedule = inconvenienceProb(waitlist, plenty_of_sess, turn_around, obj_type=obj_type, perfect_information=True, time_lim=30)
+            imperfect_info_schedule = inconvenienceProb(waitlist, all_sess, turn_around, perfect_information=False) 
 
             #TODO solve the imperfect information problem also
+            for imperfect_sessions in imperfect_info_schedule.ses_sur_dict.keys():
+                if imperfect_sessions == -1:
+                    break
+                sess_sched_obj = list(filter(lambda obj: obj.n == imperfect_sessions, all_sess))[0]
+                # get surgeries in session
+                surgeries_in_session = imperfect_info_schedule.ses_sur_dict[imperfect_sessions]
+                for surgery in surgeries_in_session:
+                    surgery_sched_obj = list(filter(lambda obj: obj.n == surgery, waitlist))[0]
+                    # check if inconvenient
+                    inconvenient = is_surgery_inconvenient(sess_sched_obj.sdt, simulation_start_date, surgery_sched_obj)
+                    if inconvenient:
+                        # cancel surgery
+                        imperfect_info_schedule.ses_sur_dict[imperfect_sessions].remove(surgery)
+                        # Need to check if more needs to be done to cancel a surgery
+                        
 
             #store solution in fudged way so don't have to rewrite Tom's code
             inconvenience_sol = get_create_solution(session, 10,
@@ -150,7 +163,7 @@ for week in range(1, weeks + 1):
 
             #update database
             create_update_solution_assignments(session, inconvenience_sol.id,
-            perfect_info_schedule.ses_sur_dict)
+            imperfect_info_schedule.ses_sur_dict)
             # sess_sur_dict = perfect_info_schedule.ses_sur_dict
         # else:
         sess_sur_dict = get_ses_sur_dict(session, inconvenience_sol.id) #TODO test if this works

@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import os
 import math
+from datetime import timedelta
 # from classes import *
 # from .solution_classes import (get_sessions, get_surgeries,
 #   get_solution_assignments)
@@ -261,6 +262,30 @@ class inconvenienceProb:
           self.ses_sur_dict[s.n].append(o.n)
           # print('Scheduled:', i, o.n, int(o.ed), o.priority)
     print(self.prob.objVal)
+
+def is_surgery_inconvenient(session_days_since_start, sim_start_date, surgery):
+    # Calculate the actual date of the session
+    session_date = sim_start_date + timedelta(days=session_days_since_start)
+    
+    # Extract the month, week number, and day of the week from the session date
+    month = session_date.month
+    week = session_date.isocalendar()[1]
+    day_of_week = session_date.isoweekday()  # 1=Monday, ..., 7=Sunday
+
+    week_inconvenient = False 
+    if surgery.weeks_banned:
+      weeks_inconvenient = [item for item in surgery.weeks_banned if item == week]
+      if weeks_inconvenient:
+        week_inconvenient = True
+    
+    # Check for inconvenient times
+    is_inconvenient = (
+        (surgery.month_banned == month) or
+        (week_inconvenient) or # need to check actual values but need to prevent index error. 
+        (surgery.day_banned == day_of_week)
+    )
+    
+    return is_inconvenient
 
 # def create_schedule(sessions, surgeries, perfect_information = True):
     #TODO maybe don't consider disruption parameter for now? if so only need to generate for either 2 weeks or one week
