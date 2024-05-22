@@ -98,30 +98,37 @@ def print_detailed_ses_sur_dict(sess_sur_dict, waitlist, plenty_of_sess, turn_ar
 
         print(f"  combined surgery durations for session {session_id} is {combined_surgery_duration - turn_around}")
          
-def compute_metrics(waitlist, ids_of_surgery_scheduled, scheduled_sessions, week):
-    # Scheduled surgeries from waitlist
-    scheduled_surgeries = [s for s in waitlist if s.n in ids_of_surgery_scheduled]
+def compute_metrics(waitlist, scheduled_sessions, week, ses_sur_dict):
 
     total_tardiness = 0
     number_patients_tardy = 0
     total_waittime_p33 = 0
     total_waittime_p66 = 0
     total_waittime_p100 = 0
-    num_surs_scheduled = len(scheduled_surgeries)
+    num_surs_scheduled = 0
 
-    for surgery in scheduled_surgeries:
-        tardiness = max(0, week - surgery.dd)
-        total_tardiness += tardiness
-        if tardiness > 0:
-            number_patients_tardy += 1
+     #For each scheduled session
+    for session in scheduled_sessions:
+        #get associated surgery ids
+        scheduled_surgery_ids = ses_sur_dict[session.n]
+        num_surs_scheduled += len(scheduled_surgery_ids)
 
-        wait_time = week+1 - surgery.ad
-        if surgery.priority <= 0.33:
-            total_waittime_p33 += wait_time
-        elif surgery.priority <= 0.66:
-            total_waittime_p66 += wait_time
-        else:
-            total_waittime_p100 += wait_time
+        #and surgery objects
+        scheduled_surgeries = [surgery for surgery in waitlist if surgery.n in scheduled_surgery_ids]
+        
+        for surgery in scheduled_surgeries:
+          tardiness = max(0, session.sdt - surgery.dd)
+          total_tardiness += tardiness
+          if tardiness > 0:
+              number_patients_tardy += 1
+
+          wait_time = session.sdt - surgery.ad
+          if surgery.priority <= 0.33:
+              total_waittime_p33 += wait_time
+          elif surgery.priority <= 0.66:
+              total_waittime_p66 += wait_time
+          else:
+              total_waittime_p100 += wait_time
 
     # Calculate average wait times
     if num_surs_scheduled > 0:

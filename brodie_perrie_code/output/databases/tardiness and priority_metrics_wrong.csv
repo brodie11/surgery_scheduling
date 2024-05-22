@@ -1,0 +1,17 @@
+,objective type,perfect_information_bool,week,total tardiness,number of patients tardy,average wait time (priority < 0.33),average wait_time (0.33 < priority < 0.66),average wait time 0.66 < priority,number of surgeries scheduled,num sessions
+0,tardiness and priority,True,1,4,1,7.387096774193548,12.451612903225806,33.29032258064516,31,3
+1,tardiness and priority,True,2,0,0,5.888888888888889,10.11111111111111,16.5,18,2
+2,tardiness and priority,True,3,0,0,16.61111111111111,8.055555555555555,14.166666666666666,18,2
+3,tardiness and priority,True,4,0,0,35.15384615384615,35.38461538461539,-4.538461538461538,13,2
+4,tardiness and priority,True,6,0,0,0.0,4.0625,8.0,16,2
+5,tardiness and priority,True,7,0,0,14.1875,-9.0,-2.4375,16,2
+6,tardiness and priority,True,8,0,0,25.071428571428573,3.2857142857142856,5.5,14,2
+7,tardiness and priority,True,9,0,0,21.0,1.1111111111111112,-21.22222222222222,9,1
+8,tardiness and priority,False,1,4,1,11.862068965517242,14.413793103448276,22.551724137931036,29,3
+9,tardiness and priority,False,2,0,0,11.833333333333334,2.3333333333333335,9.666666666666666,18,2
+10,tardiness and priority,False,3,0,0,15.68421052631579,16.263157894736842,2.4210526315789473,19,2
+11,tardiness and priority,False,4,0,0,46.916666666666664,29.0,4.5,12,2
+12,tardiness and priority,False,6,0,0,4.9411764705882355,18.764705882352942,-10.882352941176471,17,2
+13,tardiness and priority,False,7,0,0,16.72222222222222,8.777777777777779,-2.111111111111111,18,2
+14,tardiness and priority,False,8,0,0,23.083333333333332,12.75,-3.5833333333333335,12,2
+15,tardiness and priority,False,9,0,0,24.875,7.875,-23.375,8,1

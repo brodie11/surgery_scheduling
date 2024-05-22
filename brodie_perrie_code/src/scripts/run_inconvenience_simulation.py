@@ -30,11 +30,11 @@ specialty_id = 4
 facility = "A"
 turn_around = 15
 chance_of_inconvenience_for_each_day_month_week = 0.083
-obj_type = "tardiness"
+obj_type = "tardiness and priority"
 #set to true if you want to manually resolve each gurobi problem and ignore stored solutions
 solve_anyway = False
 #set how long it takes for someone to be considered tardy
-days_considered_tardy = round(2*(365/12))
+days_considered_tardy = round(4*(365/12))
 #pick start and end periods for simulation
 period_start_year = 2015 #can go 2015-3 earliest
 period_start_month = 3
@@ -44,7 +44,7 @@ simulation_start_date = pd.Timestamp(year=period_start_year, month=period_start_
 simulation_end_date = pd.Timestamp(year=period_end_year, month=period_end_month, day=1) 
 
 #data to collect
-columns = ['objective type', 'perfect_information_bool', 'week', 'total tardiness', 'number of patients tardy', 'average wait time (priority < 0.33)', 
+columns = ['objective type', 'perfect_information_bool', 'days_considered_tardy', 'week', 'total tardiness', 'number of patients tardy', 'average wait time (priority < 0.33)', 
            'average wait_time (0.33 < priority < 0.66)', 'average wait time 0.66 < priority',
            'number of surgeries scheduled', 'num sessions']
 metrics_df = pd.DataFrame(columns=columns)
@@ -146,7 +146,7 @@ for perfect_info_bool in [True, False]:
                 #this is the class that solves the linear program
                 #perfect_info_schedule = inconvenienceProb(waitlist, plenty_of_sess, turn_around, obj_type=obj_type, perfect_information=True, time_lim=30)
                 if week == 1:
-                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = week_1_solution, perfect_information=perfect_info_bool, time_lim=30) #TODO change to a longer time 
+                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = week_1_solution, perfect_information=perfect_info_bool, time_lim=300) #TODO change to a longer time 
                     week_1_solution = schedule.ses_sur_dict
                 else:
                     schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = current_solution, perfect_information=perfect_info_bool, time_lim=30) 
@@ -195,24 +195,24 @@ for perfect_info_bool in [True, False]:
         #move first 2 weeks of schedule to scheduled if first week, otherwise move first 1 week to scheduled
         scheduled_sessions = new_sessions
 
+        #compute important metrics
+        metrics = compute_metrics(waitlist, scheduled_sessions, week, sess_sur_dict)
+        total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions = metrics
+        metrics_df.loc[len(metrics_df.index)] = [obj_type, perfect_info_string, days_considered_tardy, week, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled,num_sessions]
+
         #remove scheduled sessions from all_sess and scheduled surgeries from waitlist
         ids_of_surgery_scheduled = []
         for scheduled_session in scheduled_sessions:
             ids_of_surgery_scheduled = ids_of_surgery_scheduled + sess_sur_dict[scheduled_session.n]
 
-        #compute important metrics
-        metrics = compute_metrics(waitlist, ids_of_surgery_scheduled, scheduled_sessions, week)
-        total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions = metrics
-        metrics_df.loc[len(metrics_df.index)] = [obj_type, perfect_info_string, week, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled,num_sessions]
-
-        print(f"len(waitlist){len(waitlist)}")
-        print(f"len(waitlist){len(all_sess)}")
+        # print(f"len(waitlist){len(waitlist)}")
+        # print(f"len(waitlist){len(all_sess)}")
         waitlist = [surgery for surgery in waitlist if surgery.n not in ids_of_surgery_scheduled]
         all_sess = [session for session in all_sess if session not in scheduled_sessions]
-        print(f"len(waitlist){len(waitlist)}")
-        print(f"len(waitlist){len(all_sess)}")
+        # print(f"len(waitlist){len(waitlist)}")
+        # print(f"len(waitlist){len(all_sess)}")
 
-        metrics_df.to_csv(os.path.join(OUTPUT_DB_DIR, obj_type.strip(" ") + "_metrics.csv"))
+        metrics_df.to_csv(os.path.join(OUTPUT_DB_DIR, obj_type.replace(" ", "") + "_metrics.csv"))
 
 
 #TODO compare the two schedules
