@@ -191,8 +191,11 @@ class inconvenienceProb:
     if self.init_assign is not None:
       for s in self.sess:
         for o in self.ops:
-          if o.n in self.init_assign[s.n]:
-            self.x[o.n, s.n].Start = 1
+          if s.n in self.init_assign.keys(): #check session from previous solution hasn't been removed
+            if o.n in self.init_assign[s.n]:
+              self.x[o.n, s.n].Start = 1
+          else:
+             continue
 
     # Add the tardiness variables
     self.tardiness_inds = [(o.n) for o in self.ops]
