@@ -22,7 +22,7 @@ from ..solution_classes import (Base, get_create_solution,
   get_solution, get_ses_sur_dict, create_update_solution_transfers)
 from ..visualise import create_session_graph
 from ..classes import (schedSurgery, schedSession)
-from ..helper_funcs import (inconvenienceProb, compute_metrics, print_detailed_ses_sur_dict,is_surgery_inconvenient)
+from ..helper_funcs import (inconvenienceProb, compute_metrics, print_detailed_ses_sur_dict,is_surgery_inconvenient, get_plenty_of_sess)
 from ..solution_classes import get_create_sur, get_create_ses
 
 #choose specialty, faclility, turn_around, etc.
@@ -34,7 +34,7 @@ obj_type = "tardiness and priority"
 #set to true if you want to manually resolve each gurobi problem and ignore stored solutions
 solve_anyway = False
 #set how long it takes for someone to be considered tardy
-days_considered_tardy = round(4*(365/12))
+days_considered_tardy = round(3*(365/12))
 #pick start and end periods for simulation
 period_start_year = 2015 #can go 2015-3 earliest
 period_start_month = 3
@@ -90,8 +90,6 @@ for perfect_info_bool in [True, False]:
 
     for week in range(1, weeks + 1):
 
-        if week == 10: break
-
         print(f"\n\nWeek {week}\n------------------------------------------------")
 
         #move new surgeries from new_arrivals to waitlist #TODO discuss maybe adding in overtime cancelled surgeries later?
@@ -114,7 +112,7 @@ for perfect_info_bool in [True, False]:
 
         # print(f"len waaitlist {len(waitlist)}")
 
-        plenty_of_sess = all_sess[0:len(waitlist)//6] #make sure there's enough sessions but not too many
+        plenty_of_sess = get_plenty_of_sess(all_sess, waitlist) #make sure there's enough sessions but not too many
         
         #CREATE SCHEDULES
 
@@ -124,7 +122,7 @@ for perfect_info_bool in [True, False]:
 
         #set up session to store specific week
         db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_perfect_info_{5}_days_considered_tardy_{6}.db'.format(specialty_id,
-        simulation_start_date.date(), simulation_end_date.date(), week, "obj_type",  perfect_info_string, str(days_considered_tardy))
+        simulation_start_date.date(), simulation_end_date.date(), week, obj_type,  perfect_info_string, str(days_considered_tardy))
         db_name = os.path.join(OUTPUT_DB_DIR, db_name)
         engine = create_engine('sqlite:///' + db_name)
 
@@ -146,10 +144,10 @@ for perfect_info_bool in [True, False]:
                 #this is the class that solves the linear program
                 #perfect_info_schedule = inconvenienceProb(waitlist, plenty_of_sess, turn_around, obj_type=obj_type, perfect_information=True, time_lim=30)
                 if week == 1:
-                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = week_1_solution, perfect_information=perfect_info_bool, time_lim=300) #TODO change to a longer time 
+                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = week_1_solution, perfect_information=perfect_info_bool, time_lim=600) #TODO change to a longer time 
                     week_1_solution = schedule.ses_sur_dict
                 else:
-                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = current_solution, perfect_information=perfect_info_bool, time_lim=30) 
+                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = current_solution, perfect_information=perfect_info_bool, time_lim=60) 
 
                 if perfect_info_bool == False:
                     #cancel the surgeries that were inconvenient before solution created (they will stay on waitlist)
@@ -186,7 +184,7 @@ for perfect_info_bool in [True, False]:
             # print(sess_sur_dict)
             print_detailed_ses_sur_dict(sess_sur_dict, waitlist, plenty_of_sess, turn_around)
 
-            num_sessions_to_plot = 20
+            num_sessions_to_plot = 40
             #graph
             create_session_graph(inconvenience_sol, session, db_name, num_sessions_to_plot)
 
