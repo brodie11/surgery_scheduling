@@ -2,7 +2,7 @@ from copy import deepcopy
 import numpy as np
 from numpy.random import Generator, PCG64
 from gurobipy import Model, GRB, quicksum
-from .solution_classes import (get_sessions, get_surgeries,
+from solution_classes import (get_sessions, get_surgeries,
   get_solution_assignments)
 import math
 
@@ -237,6 +237,7 @@ class priorityProb:
     self.sur_assigned_dict = {o.n: -1 for o in self.ops}
     self.ses_sur_dict = {s.n: [] for s in self.sess}
     self.ses_mean_dict = {s.n: 0 for s in self.sess}
+    self.cancelled_surgeries = []
 
     for i, s in enumerate(self.ordered_sess):
       ses_lim = 0

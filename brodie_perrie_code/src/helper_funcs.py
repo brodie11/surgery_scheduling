@@ -12,8 +12,8 @@ from datetime import timedelta
 # from classes import *
 # from .solution_classes import (get_sessions, get_surgeries,
 #   get_solution_assignments)
-from .scheduler_utils import (read_database)
-from .classes import (schedSession, schedSurgery) #TODO make sure this down the bottom
+from scheduler_utils import (read_database)
+from classes import (schedSession, schedSurgery) #TODO make sure this down the bottom
 
 # def create_schedule_surs(surgeries):
 #   surs = []
@@ -105,7 +105,7 @@ def print_detailed_ses_sur_dict(sess_sur_dict, waitlist, plenty_of_sess, turn_ar
 
         print(f"  combined surgery durations for session {session_id} is {combined_surgery_duration - turn_around}")
          
-def compute_metrics(waitlist, scheduled_sessions, week, ses_sur_dict):
+def compute_metrics(waitlist, scheduled_sessions, week, ses_sur_dict, cancelled_surgeries):
 
     total_tardiness = 0
     number_patients_tardy = 0
@@ -114,7 +114,7 @@ def compute_metrics(waitlist, scheduled_sessions, week, ses_sur_dict):
     total_waittime_p100 = 0
     num_surs_scheduled = 0
 
-     #For each scheduled session
+    #For each scheduled session
     for session in scheduled_sessions:
         #get associated surgery ids
         scheduled_surgery_ids = ses_sur_dict[session.n]
@@ -146,8 +146,10 @@ def compute_metrics(waitlist, scheduled_sessions, week, ses_sur_dict):
         average_waittime_p33 = average_waittime_p66 = average_waittime_p100 = 0
     
     num_sessions = len(scheduled_sessions)
+    num_cancelled = len(cancelled_surgeries)
+    percent_cancelled = num_cancelled / (num_sessions + num_cancelled)
 
-    return total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions
+    return total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions, num_cancelled, percent_cancelled
 
 # Class that builds and solves the MIP models for scheduling.
 class inconvenienceProb:

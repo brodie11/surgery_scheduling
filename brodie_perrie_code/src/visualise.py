@@ -7,8 +7,8 @@ from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 from matplotlib import patheffects
 
-from .configs import OUTPUT_FIG_DIR
-from .solution_classes import (get_sessions, get_surgeries,
+from configs import OUTPUT_FIG_DIR
+from solution_classes import (get_sessions, get_surgeries,
   get_solution_assignments, get_solution_transfers)
 
 pyp.style.use(os.path.join(OUTPUT_FIG_DIR, 'presentation.mplstyle'))

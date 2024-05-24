@@ -13,17 +13,17 @@ repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniver
 # TODO: add path to src directory and comment out my path. You can then run and debug. 
 
 sys.path.append(str(repo_path))
-from ..configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
-from ..scheduler_utils import (
+from configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
+from scheduler_utils import (
   prepare_data, create_schedule_partition_surs, create_schedule_partition_sess)
-from ..scheduler_classes import (schedProb, priorityProb)
-from ..solution_classes import (Base, get_create_solution,
+from scheduler_classes import (schedProb, priorityProb)
+from solution_classes import (Base, get_create_solution,
   create_update_solution_assignments,
   get_solution, get_ses_sur_dict, create_update_solution_transfers)
-from ..visualise import create_session_graph
-from ..classes import (schedSurgery, schedSession)
-from ..helper_funcs import (inconvenienceProb, compute_metrics, print_detailed_ses_sur_dict,is_surgery_inconvenient, get_plenty_of_sess)
-from ..solution_classes import get_create_sur, get_create_ses
+from visualise import create_session_graph
+from classes import (schedSurgery, schedSession)
+from helper_funcs import (inconvenienceProb, compute_metrics, print_detailed_ses_sur_dict,is_surgery_inconvenient, get_plenty_of_sess)
+from solution_classes import get_create_sur, get_create_ses
 
 #choose specialty, faclility, turn_around, etc.
 specialty_id = 4
@@ -46,7 +46,7 @@ simulation_end_date = pd.Timestamp(year=period_end_year, month=period_end_month,
 #data to collect
 columns = ['objective type', 'perfect_information_bool', 'days_considered_tardy', 'week', 'total tardiness', 'number of patients tardy', 'average wait time (priority < 0.33)', 
            'average wait_time (0.33 < priority < 0.66)', 'average wait time 0.66 < priority',
-           'number of surgeries scheduled', 'num sessions']
+           'number of surgeries scheduled', 'num sessions', 'num surgeries cancelled', "cancelation percentage",]
 metrics_df = pd.DataFrame(columns=columns)
 total_tardiness = number_patients_tardy = average_waittime_p33 = average_waittime_p66 = average_waittime_p100 = num_surs_scheduled = avg_session_utilisation = 0
 
@@ -133,6 +133,7 @@ for perfect_info_bool in [True, False]:
 
             #get solution and check if already been solved
             inconvenience_sol = get_solution(session, 10, 10, 10) #fudge a little bit so I don't have to rewrite Tom's code
+            cancelled_surgeries = []
             if inconvenience_sol is None or solve_anyway == True:
 
                 for surgery in waitlist:
@@ -151,7 +152,8 @@ for perfect_info_bool in [True, False]:
 
                 if perfect_info_bool == False:
                     #cancel the surgeries that were inconvenient before solution created (they will stay on waitlist)
-                    for imperfect_sessions in schedule.ses_sur_dict.keys():
+                    for imperfect_sessions in new_sessions:
+                        imperfect_sessions = imperfect_sessions.n
                         if imperfect_sessions == -1:
                             continue
                         sess_sched_obj = list(filter(lambda obj: obj.n == imperfect_sessions, all_sess))[0]
@@ -164,7 +166,7 @@ for perfect_info_bool in [True, False]:
                             if inconvenient:
                                 # cancel surgery
                                 schedule.ses_sur_dict[imperfect_sessions].remove(surgery)
-                                # Need to check if more needs to be done to cancel a surgery
+                                cancelled_surgeries.append(surgery)
                             
 
                 #store solution in fudged way so don't have to rewrite Tom's code
@@ -194,9 +196,9 @@ for perfect_info_bool in [True, False]:
         scheduled_sessions = new_sessions
 
         #compute important metrics
-        metrics = compute_metrics(waitlist, scheduled_sessions, week, sess_sur_dict)
-        total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions = metrics
-        metrics_df.loc[len(metrics_df.index)] = [obj_type, perfect_info_string, days_considered_tardy, week, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled,num_sessions]
+        metrics = compute_metrics(waitlist, scheduled_sessions, week, sess_sur_dict, cancelled_surgeries)
+        total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions, num_cancelled, percent_cancelled = metrics
+        metrics_df.loc[len(metrics_df.index)] = [obj_type, perfect_info_string, days_considered_tardy, week, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled,num_sessions,num_cancelled, percent_cancelled]
 
         #remove scheduled sessions from all_sess and scheduled surgeries from waitlist
         ids_of_surgery_scheduled = []

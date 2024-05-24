@@ -1,5 +1,25 @@
-,objective type,perfect_information_bool,days_considered_tardy,week,total tardiness,number of patients tardy,average wait time (priority < 0.33),average wait_time (0.33 < priority < 0.66),average wait time 0.66 < priority,number of surgeries scheduled,num sessions
-0,tardiness and priority,True,91,1,88,7,3.6551724137931036,6.103448275862069,43.06896551724138,29,3
-1,tardiness and priority,True,91,2,51,1,4.777777777777778,20.5,33.666666666666664,18,2
-2,tardiness and priority,True,91,3,101,6,12.11111111111111,15.5,19.77777777777778,18,2
-3,tardiness and priority,True,91,4,271,8,48.3125,37.625,1.0,16,2
+,objective type,perfect_information_bool,days_considered_tardy,week,total tardiness,number of patients tardy,average wait time (priority < 0.33),average wait_time (0.33 < priority < 0.66),average wait time 0.66 < priority,number of surgeries scheduled,num sessions,num surgeries cancelled,cancelation percentage
+0,tardiness and priority,False,91,1,102,7,4.884615384615385,10.153846153846153,45.42307692307692,26,3,0,0.0
+1,tardiness and priority,False,91,2,183,8,17.77777777777778,26.38888888888889,31.27777777777778,18,2,0,0.0
+2,tardiness and priority,False,91,3,119,4,25.666666666666668,19.72222222222222,22.166666666666668,18,2,0,0.0
+3,tardiness and priority,False,91,4,176,5,51.375,35.125,5.9375,16,2,0,0.0
+4,tardiness and priority,False,91,6,181,6,51.46153846153846,16.923076923076923,23.46153846153846,13,2,0,0.0
+5,tardiness and priority,False,91,7,93,4,39.84615384615385,11.76923076923077,27.46153846153846,13,2,0,0.0
+6,tardiness and priority,False,91,8,29,2,35.5625,16.1875,17.625,16,2,0,0.0
+7,tardiness and priority,False,91,9,0,0,14.666666666666666,73.66666666666667,0.0,6,1,0,0.0
+8,tardiness and priority,False,91,10,46,3,28.0,11.875,37.25,8,2,0,0.0
+9,tardiness and priority,False,91,11,0,0,29.72222222222222,41.44444444444444,4.333333333333333,18,2,0,0.0
+10,tardiness and priority,False,91,12,0,0,43.416666666666664,21.75,21.166666666666668,12,2,0,0.0
+11,tardiness and priority,False,91,13,0,0,68.88888888888889,10.0,9.777777777777779,9,1,0,0.0
+12,tardiness and priority,False,91,14,0,0,48.38461538461539,6.769230769230769,15.153846153846153,13,2,0,0.0
+13,tardiness and priority,False,91,15,0,0,24.076923076923077,27.23076923076923,7.0,26,3,0,0.0
+14,tardiness and priority,False,91,16,0,0,12.642857142857142,25.785714285714285,19.571428571428573,14,2,0,0.0
+15,tardiness and priority,False,91,17,0,0,37.714285714285715,37.714285714285715,-0.5714285714285714,7,1,0,0.0
+16,tardiness and priority,False,91,18,2,1,3.9565217391304346,22.0,2.652173913043478,23,3,0,0.0
+17,tardiness and priority,False,91,19,5,1,10.470588235294118,33.88235294117647,4.0588235294117645,17,2,0,0.0
+18,tardiness and priority,False,91,20,3,1,29.2,27.3,-0.9,10,2,0,0.0
+19,tardiness and priority,False,91,21,7,1,52.833333333333336,15.0,16.333333333333332,6,1,0,0.0
+20,tardiness and priority,False,91,22,11,1,29.733333333333334,23.466666666666665,-1.1333333333333333,15,2,0,0.0
+21,tardiness and priority,False,91,23,0,0,24.0,29.933333333333334,5.266666666666667,15,3,0,0.0
+22,tardiness and priority,False,91,24,0,0,50.4,16.0,16.8,5,1,0,0.0
+23,tardiness and priority,False,91,25,0,0,66.25,21.0,0.0,4,1,0,0.0

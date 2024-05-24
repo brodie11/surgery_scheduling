@@ -4,16 +4,16 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import pandas as pd
 
-from ..configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
-from ..scheduler_utils import (
+from configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
+from scheduler_utils import (
   prepare_data, create_schedule_surs, create_schedule_sess)
-from ..scheduler_classes import (schedProb, priorityProb)
-from ..solution_classes import (Base, get_create_solution,
+from scheduler_classes import (schedProb, priorityProb)
+from solution_classes import (Base, get_create_solution,
   create_update_solution_assignments,
   get_solution, get_ses_sur_dict, create_update_solution_transfers)
-from ..visualise import create_session_graph
-from ..classes import (schedSurgery, schedSession)
-from ..helper_funcs import (inconvenienceProb)
+from visualise import create_session_graph
+from classes import (schedSurgery, schedSession)
+from helper_funcs import (inconvenienceProb)
 
 
 if __name__ == '__main__':
