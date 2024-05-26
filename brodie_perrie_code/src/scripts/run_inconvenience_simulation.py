@@ -7,10 +7,10 @@ from sqlalchemy.orm import sessionmaker
 import pandas as pd
 
 # Perrie's path 
-repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/brodie_perrie_code/src")
+#sorry - removed on accident
 
-# Brodie;s path 
-# TODO: add path to src directory and comment out my path. You can then run and debug. 
+# Brodie's path path 
+repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/brodie_perrie_code/src")
 
 sys.path.append(str(repo_path))
 from configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
