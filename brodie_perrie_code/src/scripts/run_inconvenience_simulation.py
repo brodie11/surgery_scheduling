@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 import pandas as pd
 
 # Perrie's path 
-repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/brodie_perrie_code/src")
+repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/brodie_perrie_code/src")
 
 # Brodie;s path 
 # TODO: add path to src directory and comment out my path. You can then run and debug. 
@@ -26,7 +26,7 @@ from helper_funcs import (inconvenienceProb, compute_metrics, print_detailed_ses
 from solution_classes import get_create_sur, get_create_ses
 
 #choose specialty, faclility, turn_around, etc.
-specialty_id = 4
+specialty_id = 0
 facility = "A"
 turn_around = 15
 chance_of_inconvenience_for_each_day_month_week = 0.083
@@ -34,7 +34,7 @@ obj_type = "tardiness and priority"
 #set to true if you want to manually resolve each gurobi problem and ignore stored solutions
 solve_anyway = False
 #set how long it takes for someone to be considered tardy
-days_considered_tardy = round(3*(365/12))
+days_considered_tardy = round(4*(365/12))
 #pick start and end periods for simulation
 period_start_year = 2015 #can go 2015-3 earliest
 period_start_month = 3
@@ -122,7 +122,7 @@ for perfect_info_bool in [True, False]:
 
         #set up session to store specific week
         db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_perfect_info_{5}_days_considered_tardy_{6}.db'.format(specialty_id,
-        simulation_start_date.date(), simulation_end_date.date(), week, obj_type,  perfect_info_string, str(days_considered_tardy))
+        simulation_start_date.date(), simulation_end_date.date(), week, obj_type.replace(" ", ""),  perfect_info_string, str(days_considered_tardy))
         db_name = os.path.join(OUTPUT_DB_DIR, db_name)
         engine = create_engine('sqlite:///' + db_name)
 

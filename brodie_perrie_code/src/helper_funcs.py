@@ -73,7 +73,6 @@ def get_plenty_of_sess(all_sess, waitlist):
   duration_of_all_surgeries = sum([surgery.ed for surgery in waitlist])
   avg_duration_of_all_sessions = sum([session.sdt for session in all_sess]) / len(all_sess)
   number_sessions_needed = int(duration_of_all_surgeries//avg_duration_of_all_sessions + 5) #plus 5 for safety
-  print(number_sessions_needed)
   return all_sess[0:number_sessions_needed]
 
 def print_detailed_ses_sur_dict(sess_sur_dict, waitlist, plenty_of_sess, turn_around):
@@ -333,7 +332,6 @@ def is_surgery_inconvenient(session_days_since_start, sim_start_date, surgery):
 
 #NEXT STEPS
 # simulate for surgeries that run too long
-# implement warm starts from previous week's schedules
 # experiment with different objective functions/normalisation parameters
 
 # disruption parameter
