@@ -30,11 +30,11 @@ specialty_id = 0
 facility = "A"
 turn_around = 15
 chance_of_inconvenience_for_each_day_month_week = 0.083
-obj_type = "tardiness and priority"
+obj_type = "t&p matrix"
 #set to true if you want to manually resolve each gurobi problem and ignore stored solutions
 solve_anyway = False
 #set how long it takes for someone to be considered tardy
-days_considered_tardy = round(4*(365/12))
+days_considered_tardy = round(3*(365/12))
 #pick start and end periods for simulation
 period_start_year = 2015 #can go 2015-3 earliest
 period_start_month = 3
@@ -121,9 +121,12 @@ for perfect_info_bool in [True, False]:
         if perfect_info_bool == True: perfect_info_string = "True"
 
         #set up session to store specific week
-        db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_perfect_info_{5}_days_considered_tardy_{6}.db'.format(specialty_id,
+        db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_perfect_info_{5}_dct_{6}.db'.format(specialty_id,
         simulation_start_date.date(), simulation_end_date.date(), week, obj_type.replace(" ", ""),  perfect_info_string, str(days_considered_tardy))
         db_name = os.path.join(OUTPUT_DB_DIR, db_name)
+
+        print(f"db name {db_name}")
+
         engine = create_engine('sqlite:///' + db_name)
 
         Base.metadata.create_all(engine)
