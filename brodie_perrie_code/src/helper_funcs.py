@@ -69,6 +69,27 @@ from classes import (schedSession, schedSurgery) #TODO make sure this down the b
 
 #   return surgeries, surgical_sessions, specialties
 
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+import pandas as pd
+
+# def plot_cost(cost_dict):
+#     # Convert the 2D dictionary to a pandas DataFrame
+#     cost_df = pd.DataFrame(cost_dict).T  # Transpose to get sessions as rows and operations as columns
+    
+#     # Create a heatmap using seaborn
+#     plt.figure(figsize=(10, 8))
+#     sns.heatmap(cost_df, annot=True, fmt=".2f", cmap="RdYlGn_r", linewidths=0.5, linecolor='black')
+    
+#     # Add labels and title
+#     plt.xlabel('Operations')
+#     plt.ylabel('Sessions')
+#     plt.title('Cost Heatmap')
+    
+#     # Show the plot
+#     plt.show()
+
 def get_plenty_of_sess(all_sess, waitlist):
   duration_of_all_surgeries = sum([surgery.ed for surgery in waitlist])
   avg_duration_of_all_sessions = sum([session.sdt for session in all_sess]) / len(all_sess)
@@ -212,20 +233,41 @@ class inconvenienceProb:
           else:
              continue
 
-    # Add the tardiness variables
-    self.tardiness_inds = [(o.n) for o in self.ops]
-    self.tardiness = self.prob.addVars(self.tardiness_inds, vtype=GRB.CONTINUOUS, lb=0,
-      name='Tardiness')
+    if self.obj_type != "t&p matrix":
+      # Add the tardiness variables
+      self.tardiness_inds = [(o.n) for o in self.ops]
+      self.tardiness = self.prob.addVars(self.tardiness_inds, vtype=GRB.CONTINUOUS, lb=0,
+        name='Tardiness')
     
-    if self.obj_type == "tardiness":
+    #try calculating cost without tardiness variables
+    self.cost = {} #define empty (for now) 2d dictionary
+    for o in self.ops:
+      self.cost[o.n] = {}
+      for s in self.sess:
+          tardiness = 0
+          difference = s.sdt - o.dd
+          if difference > 0:
+             tardiness = difference
+          self.cost[o.n][s.n] = tardiness - o.priority/s.sdt
+    
+    # plot_cost(self.cost)
+
+    if self.obj_type == "t":
       #define objective function for tardiness #TODO uncomment and combine with above
       self.prob.setObjective(quicksum( self.tardiness[o.n]*self.x[o.n, s.n] #- (o.priority/s.sdt) * self.x[o.n, s.n]
           for o in self.ops
-          for s in self.sess))
-    elif self.obj_type == "tardiness and priority":
+          for s in self.sess
+          ))
+    elif self.obj_type == "t&p":
       self.prob.setObjective(quicksum( self.tardiness[o.n]*self.x[o.n, s.n] - (o.priority/s.sdt) * self.x[o.n, s.n]
           for o in self.ops
-          for s in self.sess))
+          for s in self.sess
+          ))
+    elif self.obj_type == "t&p matrix":
+      self.prob.setObjective(quicksum( self.cost[o.n][s.n]*self.x[o.n, s.n]
+          for o in self.ops
+          for s in self.sess
+          ))
 
     # Each surgery is performed once.
     for i, o in enumerate(self.ops):
@@ -240,9 +282,10 @@ class inconvenienceProb:
           for o in self.ops) - self.ta <= s.rhs,
           "session_duration_%s" % j)
 
-    #each surgery's tardiness is greater than their scheduled time - due date (and 0)
-    for o in self.ops:
-        self.prob.addConstr(self.tardiness[o.n] >= quicksum( self.x[o.n, s.n]*int(s.sdt - o.dd) for s in self.sess))
+    if self.obj_type != "t&p matrix":
+      #each surgery's tardiness is greater than their scheduled time - due date (and 0)
+      for o in self.ops:
+          self.prob.addConstr(self.tardiness[o.n] >= quicksum( self.x[o.n, s.n]*int(s.sdt - o.dd) for s in self.sess))
 
     #add inconvenient time constraints if perfect information
     #TODO
