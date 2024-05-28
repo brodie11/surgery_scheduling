@@ -167,9 +167,9 @@ def compute_metrics(waitlist, scheduled_sessions, week, ses_sur_dict, cancelled_
     
     num_sessions = len(scheduled_sessions)
     num_cancelled = len(cancelled_surgeries)
-    percent_cancelled = num_cancelled / (num_surs_scheduled + num_cancelled)
+    proportion_cancelled = num_cancelled / (num_surs_scheduled + num_cancelled)
 
-    return total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions, num_cancelled, percent_cancelled
+    return total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions, num_cancelled, proportion_cancelled
 
 # Class that builds and solves the MIP models for scheduling.
 class inconvenienceProb:

@@ -46,7 +46,7 @@ simulation_end_date = pd.Timestamp(year=period_end_year, month=period_end_month,
 #data to collect
 columns = ['objective type', 'perfect_information_bool', 'days_considered_tardy', 'week', 'total tardiness', 'number of patients tardy', 'average wait time (priority < 0.33)', 
            'average wait_time (0.33 < priority < 0.66)', 'average wait time 0.66 < priority',
-           'number of surgeries scheduled', 'num sessions', 'num surgeries cancelled', "cancelation percentage",]
+           'number of surgeries scheduled', 'num sessions', 'num surgeries cancelled', "cancelation proportion",]
 metrics_df = pd.DataFrame(columns=columns)
 total_tardiness = number_patients_tardy = average_waittime_p33 = average_waittime_p66 = average_waittime_p100 = num_surs_scheduled = avg_session_utilisation = 0
 
@@ -198,8 +198,8 @@ for perfect_info_bool in [True, False]:
 
         #compute important metrics
         metrics = compute_metrics(waitlist, scheduled_sessions, week, sess_sur_dict, cancelled_surgeries)
-        total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions, num_cancelled, percent_cancelled = metrics
-        metrics_df.loc[len(metrics_df.index)] = [obj_type, perfect_info_string, days_considered_tardy, week, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled,num_sessions,num_cancelled, percent_cancelled]
+        total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions, num_cancelled, proportion_cancelled = metrics
+        metrics_df.loc[len(metrics_df.index)] = [obj_type, perfect_info_string, days_considered_tardy, week, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled,num_sessions,num_cancelled, proportion_cancelled]
 
         #remove scheduled sessions from all_sess and scheduled surgeries from waitlist
         ids_of_surgery_scheduled = []
