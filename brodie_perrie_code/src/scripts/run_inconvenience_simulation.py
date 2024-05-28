@@ -151,26 +151,7 @@ for perfect_info_bool in [True, False]:
                     schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = week_1_solution, perfect_information=perfect_info_bool, time_lim=600) #TODO change to a longer time 
                     week_1_solution = schedule.ses_sur_dict
                 else:
-                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = current_solution, perfect_information=perfect_info_bool, time_lim=60) 
-
-                if perfect_info_bool == False:
-                    #cancel the surgeries that were inconvenient before solution created (they will stay on waitlist)
-                    for imperfect_sessions in new_sessions:
-                        imperfect_sessions = imperfect_sessions.n
-                        if imperfect_sessions == -1:
-                            continue
-                        sess_sched_obj = list(filter(lambda obj: obj.n == imperfect_sessions, all_sess))[0]
-                        # get surgeries in session
-                        surgeries_in_session = schedule.ses_sur_dict[imperfect_sessions]
-                        for surgery in surgeries_in_session:
-                            surgery_sched_obj = list(filter(lambda obj: obj.n == surgery, waitlist))[0]
-                            # check if inconvenient
-                            inconvenient = is_surgery_inconvenient(sess_sched_obj.sdt, simulation_start_date, surgery_sched_obj)
-                            if inconvenient:
-                                # cancel surgery
-                                schedule.ses_sur_dict[imperfect_sessions].remove(surgery)
-                                cancelled_surgeries.append(surgery)
-                            
+                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = current_solution, perfect_information=perfect_info_bool, time_lim=60)                         
 
                 #store solution in fudged way so don't have to rewrite Tom's code
                 inconvenience_sol = get_create_solution(session, 10,
@@ -179,7 +160,7 @@ for perfect_info_bool in [True, False]:
                 #update database
                 create_update_solution_assignments(session, inconvenience_sol.id,
                 schedule.ses_sur_dict)
-                # sess_sur_dict = perfect_info_schedule.ses_sur_dict
+                
             # else:
             sess_sur_dict = get_ses_sur_dict(session, inconvenience_sol.id)
 
@@ -193,7 +174,24 @@ for perfect_info_bool in [True, False]:
             #graph
             create_session_graph(inconvenience_sol, session, db_name, num_sessions_to_plot)
 
-        #TODO count how many surgeries were cancelled due to patient preference
+        # count how many surgeries were cancelled due to patient preference
+        if perfect_info_bool == False:
+            #cancel the surgeries that were inconvenient before solution created (they will stay on waitlist)
+            for imperfect_sessions in new_sessions:
+                imperfect_sessions = imperfect_sessions.n
+                if imperfect_sessions == -1:
+                    continue
+                sess_sched_obj = list(filter(lambda obj: obj.n == imperfect_sessions, all_sess))[0]
+                # get surgeries in session
+                surgeries_in_session = sess_sur_dict[imperfect_sessions]
+                for surgery in surgeries_in_session:
+                    surgery_sched_obj = list(filter(lambda obj: obj.n == surgery, waitlist))[0]
+                    # check if inconvenient
+                    inconvenient = is_surgery_inconvenient(sess_sched_obj.sdt, simulation_start_date, surgery_sched_obj)
+                    if inconvenient:
+                        # cancel surgery
+                        sess_sur_dict[imperfect_sessions].remove(surgery)
+                        cancelled_surgeries.append(surgery)
 
         #move first 2 weeks of schedule to scheduled if first week, otherwise move first 1 week to scheduled
         scheduled_sessions = new_sessions
