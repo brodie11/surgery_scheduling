@@ -4,6 +4,7 @@ import sys
 import numpy as np
 from scipy.stats import lognorm
 from scipy.stats import norm
+from pathlib import Path
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -13,15 +14,23 @@ from scipy import stats
 
 import matplotlib.pyplot as plt
 
-from ..configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
-from ..scheduler_utils import (
+# Perrie's path 
+repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/toms_code/src")
+
+# Brodie's path path 
+# repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/toms_code/src")
+
+sys.path.append(str(repo_path))
+
+from configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
+from scheduler_utils import (
   prepare_data, create_schedule_surs, create_schedule_sess)
-from ..scheduler_classes import (schedProb, priorityProb)
-from ..solution_classes import (Base, get_create_solution,
+from scheduler_classes import (schedProb, priorityProb)
+from solution_classes import (Base, get_create_solution,
   create_update_solution_assignments,
   get_solution, get_ses_sur_dict, create_update_solution_transfers, 
   get_sessions, get_surgeries, get_solution_assignments, get_solution_transfers)
-from ..visualise import create_session_graph
+from visualise import create_session_graph
 
 # Function to convert mean and variance of lognormal distribution to mean and variance of normal distribution
 def lognormal_to_normal(y_mean, y_var):
@@ -96,6 +105,9 @@ def generate_schedule_that_minimises_transfers_and_undertime(percentile_value,st
         (surgeries['facility'] == facility)]
     surgical_sessions = surgical_sessions.loc[(surgical_sessions['specialty_id'] == specialty_id) &
         (surgical_sessions['facility'] == facility)]
+    
+    # too many sessions, so only use 1/7th, surgeries should just fit 
+    surgical_sessions = surgical_sessions[:int(len(surgical_sessions)/7)]
     
     #set up storage of solutions so don't have to resolve
 
@@ -237,7 +249,7 @@ def get_all_sessions_and_surgeries(simulation_start_date, simulation_end_date, p
         sched_sess = sorted(sched_sess, key=lambda x: x.sdt)
     return sched_surs, sched_sess
 
-def simulate_stochastic_durations(schedDict:dict, start_date, end_date, percentile_value,turn_around=15, specialty_id = 4, facility = 'A', time_lim = 300):
+def simulate_stochastic_durations(schedDict:dict, start_date, end_date, percentile_value, turn_around=15, specialty_id = 4, facility = 'A', time_lim = 300):
     """
     does one simulation run of surgery durations 
     based on their lognormal distribution. Calculates metrics
@@ -366,8 +378,8 @@ if __name__ == '__main__':
     #pick start and end periods for simulation
     period_start_year = 2015 #can go 2015-3 earliest
     period_start_month = 3
-    period_end_year = 2016 #can go 2016-12 latest
-    period_end_month = 12
+    period_end_year = 2015 #can go 2016-12 latest
+    period_end_month = 9
     simulation_start_date = pd.Timestamp(year=period_start_year, month=period_start_month, day=1) 
     simulation_end_date = pd.Timestamp(year=period_end_year, month=period_end_month, day=1) 
     # Create a list of pd.Timestamp objects for the first day of each month

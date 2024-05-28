@@ -2,7 +2,7 @@ from copy import deepcopy
 import numpy as np
 from numpy.random import Generator, PCG64
 from gurobipy import Model, GRB, quicksum
-from .solution_classes import (get_sessions, get_surgeries,
+from solution_classes import (get_sessions, get_surgeries,
   get_solution_assignments)
 
 rng = Generator(PCG64(891011))
