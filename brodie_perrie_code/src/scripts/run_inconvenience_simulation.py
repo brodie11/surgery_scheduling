@@ -7,10 +7,10 @@ from sqlalchemy.orm import sessionmaker
 import pandas as pd
 
 # Perrie's path 
-#sorry - removed on accident
+repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/brodie_perrie_code/src")
 
 # Brodie's path path 
-repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/brodie_perrie_code/src")
+# repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/brodie_perrie_code/src")
 
 sys.path.append(str(repo_path))
 from configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
@@ -38,8 +38,8 @@ days_considered_tardy = round(3*(365/12))
 #pick start and end periods for simulation
 period_start_year = 2015 #can go 2015-3 earliest
 period_start_month = 3
-period_end_year = 2015 #can go 2016-12 latest
-period_end_month = 9
+period_end_year = 2016 #can go 2016-12 latest
+period_end_month = 12
 simulation_start_date = pd.Timestamp(year=period_start_year, month=period_start_month, day=1) 
 simulation_end_date = pd.Timestamp(year=period_end_year, month=period_end_month, day=1) 
 
