@@ -32,7 +32,7 @@ turn_around = 15
 chance_of_inconvenience_for_each_day_month_week = 0.083
 obj_type = "t&p matrix"
 #set to true if you want to manually resolve each gurobi problem and ignore stored solutions
-solve_anyway = True
+solve_anyway = False
 #set how long it takes for someone to be considered tardy
 days_considered_tardy = round(3*(365/12))
 #pick start and end periods for simulation
@@ -176,7 +176,7 @@ for perfect_info_bool in [True, False]:
             current_solution = sess_sur_dict
 
             # print(sess_sur_dict)
-            print_detailed_ses_sur_dict(sess_sur_dict, waitlist, plenty_of_sess, turn_around)
+            # print_detailed_ses_sur_dict(sess_sur_dict, waitlist, plenty_of_sess, turn_around)
 
             num_sessions_to_plot = 40
             #graph
