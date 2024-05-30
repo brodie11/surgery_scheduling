@@ -98,8 +98,8 @@ def create_schedule_partition_surs(partition_surs, simulation_start_date, simula
   number_of_weeks = (simulation_end_date - simulation_start_date).days // 7
   to_arrive_partitioned = []
   for x in range(1, number_of_weeks + 1):
-    week_x = list(filter(lambda surgery: surgery.ad // 7 <= x, to_arrive_sorted))
-    to_arrive_sorted = list(filter(lambda surgery: surgery.ad // 7 > x, to_arrive_sorted))
+    week_x = list(filter(lambda surgery: surgery.ad / 7 <= x, to_arrive_sorted))
+    to_arrive_sorted = list(filter(lambda surgery: surgery.ad / 7 > x, to_arrive_sorted))
     to_arrive_partitioned.append(week_x)
 
   return initial_waitlist, to_arrive_partitioned

@@ -156,7 +156,7 @@ def compute_metrics(waitlist, scheduled_sessions, week, ses_sur_dict, cancelled_
               total_waittime_p66 += wait_time
           else:
               total_waittime_p100 += wait_time
-
+          
     # Calculate average wait times
     if num_surs_scheduled > 0:
         average_waittime_p33 = total_waittime_p33 / num_surs_scheduled
@@ -164,6 +164,17 @@ def compute_metrics(waitlist, scheduled_sessions, week, ses_sur_dict, cancelled_
         average_waittime_p100 = total_waittime_p100 / num_surs_scheduled
     else:
         average_waittime_p33 = average_waittime_p66 = average_waittime_p100 = 0
+    
+    if average_waittime_p100 + 3.1 < 0.1:
+        print("xyxyxyx")
+        print(week)
+        print(scheduled_surgeries)
+        print(scheduled_sessions)
+
+        for scheduled_surgery in scheduled_surgeries:
+          print(f"surgery {scheduled_surgery.n} has ad of {scheduled_surgery.ad}")
+
+        sys.exit(0)
     
     num_sessions = len(scheduled_sessions)
     num_cancelled = len(cancelled_surgeries)
