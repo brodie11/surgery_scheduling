@@ -7,13 +7,13 @@ from sqlalchemy.orm import sessionmaker
 import pandas as pd
 
 # Perrie's path 
-repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/brodie_perrie_code/src")
+# repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/brodie_perrie_code/src")
 
 # Brodie's path path 
-# repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/brodie_perrie_code/src")
+repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/brodie_perrie_code/src")
 
 sys.path.append(str(repo_path))
-from configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
+from configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE, OUTPUT_DB_DIR_TEST
 from scheduler_utils import (
   prepare_data, create_schedule_partition_surs, create_schedule_partition_sess)
 from scheduler_classes import (schedProb, priorityProb)
@@ -26,22 +26,30 @@ from helper_funcs import (inconvenienceProb, compute_metrics, print_detailed_ses
 from solution_classes import get_create_sur, get_create_ses
 
 #choose specialty, faclility, turn_around, etc.
-specialty_id = 0
+specialty_id = 4
 facility = "A"
 turn_around = 15
 chance_of_inconvenience_for_each_day_month_week = 0.083
 obj_type = "t&p matrix"
 #set to true if you want to manually resolve each gurobi problem and ignore stored solutions
-solve_anyway = False
+solve_anyway = True
 #set how long it takes for someone to be considered tardy
 days_considered_tardy = round(3*(365/12))
 #pick start and end periods for simulation
 period_start_year = 2015 #can go 2015-3 earliest
 period_start_month = 3
-period_end_year = 2016 #can go 2016-12 latest
-period_end_month = 12
+period_end_year = 2015 #can go 2016-12 latest
+period_end_month = 9
 simulation_start_date = pd.Timestamp(year=period_start_year, month=period_start_month, day=1) 
 simulation_end_date = pd.Timestamp(year=period_end_year, month=period_end_month, day=1) 
+#make testing = true if running a test or something else where you don't mind the databases being 
+#deleted after. Make testing = false otherwise
+testing = True
+output_db_location_to_use = OUTPUT_DB_DIR
+if testing == True:
+    output_db_location_to_use = OUTPUT_DB_DIR_TEST
+
+
 
 #data to collect
 columns = ['objective type', 'perfect_information_bool', 'days_considered_tardy', 'week', 'total tardiness', 'number of patients tardy', 'average wait time (priority < 0.33)', 
@@ -121,9 +129,9 @@ for perfect_info_bool in [True, False]:
         if perfect_info_bool == True: perfect_info_string = "True"
 
         #set up session to store specific week
-        db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_perfect_info_{5}_dct_{6}.db'.format(specialty_id,
+        db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_pi_{5}_dct_{6}.db'.format(specialty_id,
         simulation_start_date.date(), simulation_end_date.date(), week, obj_type.replace(" ", ""),  perfect_info_string, str(days_considered_tardy))
-        db_name = os.path.join(OUTPUT_DB_DIR, db_name)
+        db_name = os.path.join(output_db_location_to_use, db_name)
 
         print(f"db name {db_name}")
 
@@ -148,10 +156,10 @@ for perfect_info_bool in [True, False]:
                 #this is the class that solves the linear program
                 #perfect_info_schedule = inconvenienceProb(waitlist, plenty_of_sess, turn_around, obj_type=obj_type, perfect_information=True, time_lim=30)
                 if week == 1:
-                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = week_1_solution, perfect_information=perfect_info_bool, time_lim=600) #TODO change to a longer time 
+                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = week_1_solution, perfect_information=perfect_info_bool, time_lim=300) #TODO change to a longer time 
                     week_1_solution = schedule.ses_sur_dict
                 else:
-                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = current_solution, perfect_information=perfect_info_bool, time_lim=60)                         
+                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = current_solution, perfect_information=perfect_info_bool, time_lim=30)                         
 
                 #store solution in fudged way so don't have to rewrite Tom's code
                 inconvenience_sol = get_create_solution(session, 10,
@@ -213,7 +221,7 @@ for perfect_info_bool in [True, False]:
         # print(f"len(waitlist){len(waitlist)}")
         # print(f"len(waitlist){len(all_sess)}")
 
-        metrics_df.to_csv(os.path.join(OUTPUT_DB_DIR, obj_type.replace(" ", "") + "_metrics.csv"))
+        metrics_df.to_csv(os.path.join(output_db_location_to_use, obj_type.replace(" ", "") + "_metrics.csv"))
 
 
 #TODO compare the two schedules
