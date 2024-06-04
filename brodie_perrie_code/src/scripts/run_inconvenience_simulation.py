@@ -26,8 +26,11 @@ from helper_funcs import (inconvenienceProb, compute_metrics, print_detailed_ses
 from solution_classes import get_create_sur, get_create_ses
 
 #choose specialty, faclility, turn_around, etc.
-specialty_id = 4
+specialty_id = 0
 facility = "A"
+time_lim_first_week = 600
+time_lim_other_weeks = 60
+print_verbose = False
 turn_around = 15
 chance_of_inconvenience_for_each_day_month_week = 0.083
 obj_type = "t&p matrix"
@@ -38,18 +41,16 @@ days_considered_tardy = round(3*(365/12))
 #pick start and end periods for simulation
 period_start_year = 2015 #can go 2015-3 earliest
 period_start_month = 3
-period_end_year = 2015 #can go 2016-12 latest
-period_end_month = 9
+period_end_year = 2016 #can go 2016-12 latest
+period_end_month = 3
 simulation_start_date = pd.Timestamp(year=period_start_year, month=period_start_month, day=1) 
 simulation_end_date = pd.Timestamp(year=period_end_year, month=period_end_month, day=1) 
 #make testing = true if running a test or something else where you don't mind the databases being 
 #deleted after. Make testing = false otherwise
-testing = True
+testing = False
 output_db_location_to_use = OUTPUT_DB_DIR
 if testing == True:
     output_db_location_to_use = OUTPUT_DB_DIR_TEST
-
-
 
 #data to collect
 columns = ['objective type', 'perfect_information_bool', 'days_considered_tardy', 'week', 'total tardiness', 'number of patients tardy', 'average wait time (priority < 0.33)', 
@@ -91,14 +92,14 @@ for perfect_info_bool in [True, False]:
 
     #count patients already tardy at start
     number_patients_tardy = len(list(filter(lambda surgery: surgery.dd < 0, surgeries_initial_waitlist)))
-    print(f"number of patients already tardy at start: {number_patients_tardy}")
+    if print_verbose: print(f"number of patients already tardy at start: {number_patients_tardy}")
 
     #MAIN LOOP
     waitlist = surgeries_initial_waitlist
 
     for week in range(1, weeks + 1):
 
-        print(f"\n\nWeek {week}\n------------------------------------------------")
+        if print_verbose: print(f"\n\nWeek {week}\n------------------------------------------------")
 
         #move new surgeries from new_arrivals to waitlist #TODO discuss maybe adding in overtime cancelled surgeries later?
         new_sessions = []
@@ -133,7 +134,7 @@ for perfect_info_bool in [True, False]:
         simulation_start_date.date(), simulation_end_date.date(), week, obj_type.replace(" ", ""),  perfect_info_string, str(days_considered_tardy))
         db_name = os.path.join(output_db_location_to_use, db_name)
 
-        print(f"db name {db_name}")
+        if print_verbose: print(f"db name {db_name}")
 
         engine = create_engine('sqlite:///' + db_name)
 
@@ -156,10 +157,10 @@ for perfect_info_bool in [True, False]:
                 #this is the class that solves the linear program
                 #perfect_info_schedule = inconvenienceProb(waitlist, plenty_of_sess, turn_around, obj_type=obj_type, perfect_information=True, time_lim=30)
                 if week == 1:
-                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = week_1_solution, perfect_information=perfect_info_bool, time_lim=300) #TODO change to a longer time 
+                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = week_1_solution, perfect_information=perfect_info_bool, time_lim=time_lim_first_week) #TODO change to a longer time 
                     week_1_solution = schedule.ses_sur_dict
                 else:
-                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = current_solution, perfect_information=perfect_info_bool, time_lim=30)                         
+                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = current_solution, perfect_information=perfect_info_bool, time_lim=time_lim_other_weeks)                         
 
                 #store solution in fudged way so don't have to rewrite Tom's code
                 inconvenience_sol = get_create_solution(session, 10,
@@ -221,10 +222,16 @@ for perfect_info_bool in [True, False]:
         # print(f"len(waitlist){len(waitlist)}")
         # print(f"len(waitlist){len(all_sess)}")
 
-        metrics_df.to_csv(os.path.join(output_db_location_to_use, obj_type.replace(" ", "") + "_metrics.csv"))
+        metrics_df.to_csv(os.path.join(output_db_location_to_use, obj_type.replace(" ", "") + "_specialty_" + str(specialty_id).replace(" ", "") + "_metrics.csv"))
 
 
 #TODO compare the two schedules
+
+columns_to_summarise=['total tardiness',	'number of patients tardy',	'average wait time (priority < 0.33)',	'average wait_time (0.33 < priority < 0.66)',	'average wait time 0.66 < priority',	'number of surgeries scheduled',	'num surgeries cancelled',	'cancelation proportion']
+
+average_values = metrics_df.groupby('perfect_information_bool')[columns_to_summarise].mean().reset_index()
+average_values.to_csv(os.path.join(output_db_location_to_use,"average_values_specialty_{0}.csv".format(str(specialty_id))))
+if print_verbose: print(average_values)
 
 
 
