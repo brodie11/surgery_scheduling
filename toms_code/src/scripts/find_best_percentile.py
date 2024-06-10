@@ -4,6 +4,7 @@ import sys
 import numpy as np
 from scipy.stats import lognorm
 from scipy.stats import norm
+from pathlib import Path
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -13,15 +14,24 @@ from scipy import stats
 
 import matplotlib.pyplot as plt
 
-from ..configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
-from ..scheduler_utils import (
+
+# Perrie's path 
+repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/toms_code/src")
+
+# Brodie's path path 
+# repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/toms_code/src")
+
+sys.path.append(str(repo_path))
+
+from configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE
+from scheduler_utils import (
   prepare_data, create_schedule_surs, create_schedule_sess)
-from ..scheduler_classes import (schedProb, priorityProb)
-from ..solution_classes import (Base, get_create_solution,
+from scheduler_classes import (schedProb, priorityProb)
+from solution_classes import (Base, get_create_solution,
   create_update_solution_assignments,
   get_solution, get_ses_sur_dict, create_update_solution_transfers, 
   get_sessions, get_surgeries, get_solution_assignments, get_solution_transfers)
-from ..visualise import create_session_graph
+from visualise import create_session_graph
 
 # Function to convert mean and variance of lognormal distribution to mean and variance of normal distribution
 def lognormal_to_normal(y_mean, y_var):

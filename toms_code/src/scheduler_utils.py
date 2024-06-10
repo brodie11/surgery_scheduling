@@ -35,6 +35,7 @@ def read_database(session, start_date, end_date):
   query = (session.query(SurgicalSession)
     .filter(SurgicalSession.planned == 1)
     .filter(SurgicalSession.start_time >= start_date)
+    .filter(SurgicalSession.start_time < end_date)
     .order_by(SurgicalSession.id))
   surgical_sessions = pd.read_sql_query(query.statement, session.bind,
     index_col='id')
@@ -43,6 +44,7 @@ def read_database(session, start_date, end_date):
     Specialty.id.label('specialties_id'), Specialty.name)
     .filter(SurgicalSession.planned == 1)
     .filter(SurgicalSession.start_time >= start_date)
+    .filter(SurgicalSession.start_time < end_date)
     .join(Specialty)
     .order_by(SurgicalSession.id))
   specialty_names = pd.read_sql_query(query.statement, session.bind)
