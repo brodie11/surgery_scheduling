@@ -69,12 +69,13 @@ def plot_normal(data, label, colour, column):
 
 plt.figure(figsize=(8, 6))
 column = 'num_surgeries_completed'
-colours = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
+colours = ['#ef476f', '#f78c6b', '#ffd166', '#06d6a0', '#118ab2', '#073b4c']
 plot_normal(data1, label="45th", colour=colours[0], column=column)
 plot_normal(data2, label="50th", colour=colours[1], column=column)
 plot_normal(data3, label="55th", colour=colours[2], column=column)
 plot_normal(data4, label="60th", colour=colours[3], column=column)
 plot_normal(data5, label="65th", colour=colours[4], column=column)
+plot_normal(data6, label="70th", colour=colours[5], column=column)
 
 plt.title("Comparison of PDFS for different percentile values")
 plt.ylabel("PDF")
