@@ -195,7 +195,7 @@ def generate_schedule_that_minimises_transfers_and_undertime(percentile_value,st
             min_under_dict = get_ses_sur_dict(session, min_under_sol.id)
 
         #graph
-        graph_name = 'specialty_{0}_start_{1}_end_{2}_min_under_percentile{3}'.format(specialty_id,
+        graph_name = 'spec_{0}_{1}_{2}_percentile{3}'.format(specialty_id,
         start_date.date(), end_date.date(), percentile_value)
         create_session_graph(min_under_sol, session, graph_name)
 
@@ -310,7 +310,7 @@ def simulate_stochastic_durations(schedDict:dict, start_date, end_date, percenti
             surgeries.append(sur)
 
         #sort surgeries from smallest to biggest for consistency in cancellations
-        surgeries = sorted(surgeries, key=lambda sur: sur.ed, reverse=False)
+        surgeries = sorted(surgeries, key=lambda sur: sur.ed, reverse=True)
         
         for sur in surgeries:
             #get duration randomly from lognormal distribution and add to total duration
@@ -334,8 +334,8 @@ def simulate_stochastic_durations(schedDict:dict, start_date, end_date, percenti
                 num_surgeries_completed += 1
             else:
                 #if surgery will probably take more than 30 mins overtime then increment cancellation metrics accordingly and stop surgeries for day
-                cancelled_surgery_index = surgery_array.index(surgery_id)
-                num_surgeries_cancelled += len(surgery_array[cancelled_surgery_index:])
+                cancelled_surgery_index = surgeries.index(sur)
+                num_surgeries_cancelled += (len(surgery_array[cancelled_surgery_index:]))
                 # print(f"Surgeries cancelled! num_surgeries_cancelled = {num_surgeries_cancelled}")
                 # print(f"All surgeries: {surgery_array}")
                 num_sessions_with_cancelled_surgeries += 1
@@ -360,7 +360,7 @@ def simulate_stochastic_durations(schedDict:dict, start_date, end_date, percenti
 if __name__ == '__main__':
 
     #set seed
-    np.random.seed(789)
+    np.random.seed(1)
 
     #set up pandas dataframe to store everything
     best_percentile_df = pd.DataFrame(columns = ["i", "percentile_column_name", "month_start", "num_surgeries_completed", "average_session_utilisation", "total_mins_overtime", "num_sessions_that_run_overtime", "num_sessions_with_cancelled_surgeries", "num_surgeries_cancelled"]
@@ -376,8 +376,8 @@ if __name__ == '__main__':
     #pick start and end periods for simulation
     period_start_year = 2015 #can go 2015-3 earliest
     period_start_month = 3
-    period_end_year = 2016 #can go 2016-12 latest
-    period_end_month = 12
+    period_end_year = 2015 #can go 2016-12 latest
+    period_end_month = 9
     simulation_start_date = pd.Timestamp(year=period_start_year, month=period_start_month, day=1) 
     simulation_end_date = pd.Timestamp(year=period_end_year, month=period_end_month, day=1) 
     # Create a list of pd.Timestamp objects for the first day of each month
@@ -409,12 +409,12 @@ if __name__ == '__main__':
             #Find the solution that has the fewest transfers while still minimising the undertime for given month and percentile
             sched_sur_dict = generate_schedule_that_minimises_transfers_and_undertime(
                 percentile_value, month_start,month_start + pd.DateOffset(months=1),
-                turn_around = 15, specialty_id = specialty, facility = facility, time_lim = 300, 
+                turn_around = 15, specialty_id = specialty, facility = facility, time_lim = 30, 
                 solve_first_time=False)
             schedules.append((month_start,percentile_column_name,sched_sur_dict))
 
-            #simulate durations 100 times
-            num_runs = 10000
+            #simulate durations 1000 times
+            num_runs = 1000
             for j in range(num_runs):
                 #simulate 100 runs of sched_surgery_for_percentile
                 result = simulate_stochastic_durations(
@@ -442,5 +442,5 @@ if __name__ == '__main__':
     formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M')
     date = formatted_datetime.split(" ")[0] + formatted_datetime.split(" ")[1].split(":")[0] + formatted_datetime.split(" ")[1].split(":")[1] #remove spaces
 
-    best_percentile_df.to_csv(os.path.join(OUTPUT_DB_DIR, "percentile_metrics" + date + ".csv"), index=False)
+    best_percentile_df.to_csv(os.path.join(OUTPUT_DB_DIR, "percentile_metrics_debug" + date + ".csv"), index=False)
     
