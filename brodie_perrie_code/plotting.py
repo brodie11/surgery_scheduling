@@ -5,8 +5,8 @@ import seaborn as sns
 import numpy as np
 from scipy.stats import norm
 
-filepath = Path("toms_code/output/databases/percentile_metrics_debug2024-06-112002.csv")
-save_location = Path("brodie_perrie_code/output/plots/debug")
+filepath = Path("toms_code/output/databases/percentile_metrics_debug_randseed52024-06-121115.csv")
+save_location = Path("brodie_perrie_code/output/plots/debug/random_seed")
 df = pd.read_csv(filepath)
 
 # Creating subplots with multiple histograms
