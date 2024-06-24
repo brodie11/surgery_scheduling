@@ -5,7 +5,7 @@ import seaborn as sns
 import numpy as np
 from scipy.stats import norm
 
-filepath = Path("toms_code/output/databases/percentile_metrics_debug_randseed52024-06-121115.csv")
+filepath = Path("toms_code/output/databases/percentile_metrics_debug_randseed52024-06-241748.csv")
 save_location = Path("brodie_perrie_code/output/plots/debug/random_seed")
 df = pd.read_csv(filepath)
 
@@ -133,3 +133,54 @@ label2 = "Number of sessions with cancelled surgeries"
 plot_title = '# Overtime sessions vs. # Sessions with cancelled surgeries'
 file_name = 'num_overtime_vs_num_cancelled.png'
 twin_axis_compare(values1=num_sessions_that_run_overtime,label1=label1, values2=num_sessions_with_cancelled_surgeries, label2=label2, plot_title=plot_title, file_name=file_name)
+
+# plot sum of cancelled and completed session
+grouped_df = df.groupby('percentile_column_name').agg({
+    'num_surgeries_completed': 'sum',
+    'num_surgeries_cancelled': 'sum'
+})
+
+sum_cancelled_completed = grouped_df['num_surgeries_completed'] + grouped_df['num_surgeries_cancelled']
+
+# Plot settings
+label1 = "Sum of cancelled and completed sessions"
+plot_title = 'Sum of cancelled and completed sessions'
+file_name = 'sum_cancelled_completed.png'
+
+percentiles = grouped_df.index.tolist()  # Using index from grouped_df
+values = sum_cancelled_completed.tolist()  # Converting the series to a list
+
+# Plot the sum of cancelled and completed surgeries
+color = 'tab:blue'
+plt.figure(figsize=(10, 6))
+plt.xlabel('Percentile Values')
+plt.ylabel(label1, color=color)
+plt.plot(percentiles, values, color=color, marker='o', linestyle='dotted')
+plt.tick_params(axis='y', labelcolor=color)
+
+# Add title and save the plot
+plt.title(plot_title)
+plt.savefig(f"{save_location}/{file_name}")
+
+
+# Plot total mins surgery time
+avg_mins_surgery_time = df.groupby('percentile_column_name')['total_mins_surgery_time'].mean()
+
+# Plot settings
+label1 = "Average mins spent operating per schedule"
+plot_title = 'Average mins spent operating per schedule'
+file_name = 'minutes_in_surgery.png'
+
+percentiles = grouped_df.index.tolist()  # Using index from grouped_df
+
+# Plot the sum of cancelled and completed surgeries
+color = 'tab:blue'
+plt.figure(figsize=(10, 6))
+plt.xlabel('Percentile Values')
+plt.ylabel(label1, color=color)
+plt.plot(percentiles, avg_mins_surgery_time, color=color, marker='o', linestyle='dotted')
+plt.tick_params(axis='y', labelcolor=color)
+
+# Add title and save the plot
+plt.title(plot_title)
+plt.savefig(f"{save_location}/{file_name}")
