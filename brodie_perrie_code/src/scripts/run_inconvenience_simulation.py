@@ -226,8 +226,9 @@ for perfect_info_bool in [True, False]:
 
 
 #TODO compare the two schedules
-
-columns_to_summarise=['total tardiness',	'number of patients tardy',	'average wait time (priority < 0.33)',	'average wait_time (0.33 < priority < 0.66)',	'average wait time 0.66 < priority',	'number of surgeries scheduled',	'num surgeries cancelled',	'cancelation proportion']
+columns_to_summarise=['total tardiness','number of patients tardy',	'average wait time (priority < 0.33)',	
+                      'average wait_time (0.33 < priority < 0.66)',	'average wait time 0.66 < priority',	
+                      'number of surgeries scheduled',	'num surgeries cancelled',	'cancelation proportion']
 
 average_values = metrics_df.groupby('perfect_information_bool')[columns_to_summarise].mean().reset_index()
 average_values.to_csv(os.path.join(output_db_location_to_use,"average_values_specialty_{0}.csv".format(str(specialty_id))))
