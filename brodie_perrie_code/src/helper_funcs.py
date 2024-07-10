@@ -186,7 +186,7 @@ def compute_metrics(waitlist, scheduled_sessions, week, ses_sur_dict, cancelled_
 class inconvenienceProb:
   # Copy and sort the surgeries and sessions, build the model, then solve the
   # model.
-  def __init__(self, surgeries, sessions, turn_around, obj_type, time_lim=300, init_assign=None, perfect_information=False):
+  def __init__(self, surgeries, sessions, turn_around, obj_type, is_disruption_considered, max_disruption_parameter, max_disruption_shift, time_lim=300, init_assign=None, perfect_information=False):
 
     self.ops = deepcopy(surgeries)
     self.sess = deepcopy(sessions)
@@ -216,6 +216,10 @@ class inconvenienceProb:
 
     self.obj_type = obj_type
 
+    self.idc = is_disruption_considered
+    self.mdp = max_disruption_parameter
+    self.mds = max_disruption_shift
+
     self.prob = 0
     self.obj = 0
 
@@ -232,6 +236,9 @@ class inconvenienceProb:
       for s in self.sess]
     self.x = self.prob.addVars(self.x_inds, vtype=GRB.BINARY,
       name='AssignSurgeries')
+    
+    #get current day/week
+    earliest_day = min([s.sdt for s in self.sess])
 
     # If there is a previous solution to use as a starting point, set the
     # Start attribute of the x variables.
@@ -241,8 +248,18 @@ class inconvenienceProb:
           if s.n in self.init_assign.keys(): #check session from previous solution hasn't been removed
             if o.n in self.init_assign[s.n]:
               self.x[o.n, s.n].Start = 1
+              if self.idc == True:
+                #ban shifts by more than max_disruption_shift
+                #get list of all sessions which would represent too much of a shift in schedule if this operation were reassigned
+                banned_session_ids = [banned_session.n for banned_session in self.sess if banned_session.sdt < s.sdt - self.mds or banned_session.sdt > s.sdt + self.mds]
+                for banned_session_id in banned_session_ids:
+                  self.prob.addConstr(self.x[o.n, banned_session_id] == 0)
           else:
              continue
+    
+    #limit the number of deviations from previous solution to self.mdp or less
+    if self.idc == True and self.init_assign is not None:
+      self.prob.addConstr(quicksum((1-self.x[o.n, s.n]) for s in self.sess for o in self.ops if s.n in self.init_assign.keys() and o.n in self.init_assign[s.n]) <= self.mdp)
 
     if self.obj_type != "t&p matrix":
       # Add the tardiness variables

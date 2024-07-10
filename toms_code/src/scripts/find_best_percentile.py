@@ -16,10 +16,10 @@ import matplotlib.pyplot as plt
 
 
 # Perrie's path 
-repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/toms_code/src")
+# repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/toms_code/src")
 
 # Brodie's path path 
-# repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/toms_code/src")
+repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/toms_code/src")
 
 sys.path.append(str(repo_path))
 
@@ -353,6 +353,9 @@ def simulate_stochastic_durations(schedDict:dict, start_date, end_date, complete
 
 if __name__ == '__main__':
 
+    # Brodie's path path 
+    repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/toms_code/src")
+
 
     #set up pandas dataframe to store everything
     best_percentile_df = pd.DataFrame(columns = ["i", "percentile_column_name", "month_start", "num_surgeries_completed", "average_session_utilisation", "total_mins_overtime", "total_mins_surgery_time", "num_sessions_that_run_overtime", "num_sessions_with_cancelled_surgeries", "num_surgeries_cancelled"]
@@ -393,7 +396,7 @@ if __name__ == '__main__':
     for month_start in month_starts: #and each month
         for i,percentile_column_name in enumerate(percentile_column_names): #for each percentile
             #set seed
-            np.random.seed(5)
+            np.random.seed(870415)
             percentile_value = percentile_values[i]
 
             print(f"\n\nMONTH: {month_start.strftime('%Y-%m-%d %X')}")
@@ -408,7 +411,7 @@ if __name__ == '__main__':
             schedules.append((month_start,percentile_column_name,sched_sur_dict))
 
             #simulate durations 1000 times
-            num_runs = 1000
+            num_runs = 100
 
             # unpack dict to get list of all surgeries
             all_surgeries = [surg_id for surg_id_list in (surg_id_list for surg_id_list in sched_sur_dict.values()) for surg_id in surg_id_list]

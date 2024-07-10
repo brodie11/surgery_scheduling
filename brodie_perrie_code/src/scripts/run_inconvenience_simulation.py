@@ -28,8 +28,8 @@ from solution_classes import get_create_sur, get_create_ses
 #choose specialty, faclility, turn_around, etc.
 specialty_id = 0
 facility = "A"
-time_lim_first_week = 600
-time_lim_other_weeks = 60
+time_lim_first_week = 200
+time_lim_other_weeks = 20
 print_verbose = False
 turn_around = 15
 chance_of_inconvenience_for_each_day_month_week = 0.083
@@ -53,9 +53,10 @@ if testing == True:
     output_db_location_to_use = OUTPUT_DB_DIR_TEST
 
 #data to collect
-columns = ['objective type', 'perfect_information_bool', 'days_considered_tardy', 'week', 'total tardiness', 'number of patients tardy', 'average wait time (priority < 0.33)', 
+columns = ['objective type', 'disruptions?', 'perfect_information_bool', 'days_considered_tardy', 'week', 'total tardiness', 'number of patients tardy', 'average wait time (priority < 0.33)', 
            'average wait_time (0.33 < priority < 0.66)', 'average wait time 0.66 < priority',
-           'number of surgeries scheduled', 'num sessions', 'num surgeries cancelled', "cancelation proportion",]
+           'number of surgeries scheduled', 'num sessions', 'num surgeries cancelled', "cancelation proportion",
+           ]
 metrics_df = pd.DataFrame(columns=columns)
 total_tardiness = number_patients_tardy = average_waittime_p33 = average_waittime_p66 = average_waittime_p100 = num_surs_scheduled = avg_session_utilisation = 0
 
@@ -81,6 +82,15 @@ surgical_sessions['start_time'] = pd.to_datetime(surgical_sessions['start_time']
 
 current_solution = None
 week_1_solution = None
+
+is_disruption_considered = True
+
+#disruption parameter
+#defined as total number of operation-session assignments which can be changed between weeks (this means we can tell people their approximate date with some certainty)
+max_disruption_parameter = 10 #max of 10 surgeries can change date between weeks
+#max disruption shift
+#defined as the maximum amount of days a surgery date can be shifted by in a given week
+max_disruption_shift = 14
 
 #loop through each week in weeks:
 weeks = (simulation_end_date - simulation_start_date).days // 7
@@ -129,9 +139,14 @@ for perfect_info_bool in [True, False]:
         perfect_info_string = "False"
         if perfect_info_bool == True: perfect_info_string = "True"
 
+        #make string version of is_disruption_considered
+        is_disruption_considered_string = "False"
+        if is_disruption_considered == True: is_disruption_considered_string = "True"
+
         #set up session to store specific week
-        db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_pi_{5}_dct_{6}.db'.format(specialty_id,
-        simulation_start_date.date(), simulation_end_date.date(), week, obj_type.replace(" ", ""),  perfect_info_string, str(days_considered_tardy))
+        db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_pi_{5}_dct_{6}_disruption_{7}.db'.format(specialty_id,
+        simulation_start_date.date(), simulation_end_date.date(), week, obj_type.replace(" ", ""),  perfect_info_string, str(days_considered_tardy), 
+        is_disruption_considered_string)
         db_name = os.path.join(output_db_location_to_use, db_name)
 
         if print_verbose: print(f"db name {db_name}")
@@ -157,10 +172,10 @@ for perfect_info_bool in [True, False]:
                 #this is the class that solves the linear program
                 #perfect_info_schedule = inconvenienceProb(waitlist, plenty_of_sess, turn_around, obj_type=obj_type, perfect_information=True, time_lim=30)
                 if week == 1:
-                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = week_1_solution, perfect_information=perfect_info_bool, time_lim=time_lim_first_week) #TODO change to a longer time 
+                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, is_disruption_considered, max_disruption_parameter, max_disruption_shift, init_assign = week_1_solution, perfect_information=perfect_info_bool, time_lim=time_lim_first_week) #TODO change to a longer time 
                     week_1_solution = schedule.ses_sur_dict
                 else:
-                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, init_assign = current_solution, perfect_information=perfect_info_bool, time_lim=time_lim_other_weeks)                         
+                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, is_disruption_considered, max_disruption_parameter, max_disruption_shift, init_assign = current_solution, perfect_information=perfect_info_bool, time_lim=time_lim_other_weeks)                         
 
                 #store solution in fudged way so don't have to rewrite Tom's code
                 inconvenience_sol = get_create_solution(session, 10,
@@ -208,7 +223,7 @@ for perfect_info_bool in [True, False]:
         #compute important metrics
         metrics = compute_metrics(waitlist, scheduled_sessions, week, sess_sur_dict, cancelled_surgeries)
         total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions, num_cancelled, proportion_cancelled = metrics
-        metrics_df.loc[len(metrics_df.index)] = [obj_type, perfect_info_string, days_considered_tardy, week, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled,num_sessions,num_cancelled, proportion_cancelled]
+        metrics_df.loc[len(metrics_df.index)] = [obj_type, is_disruption_considered_string, perfect_info_string, days_considered_tardy, week, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled,num_sessions,num_cancelled, proportion_cancelled]
 
         #remove scheduled sessions from all_sess and scheduled surgeries from waitlist
         ids_of_surgery_scheduled = []
@@ -231,7 +246,7 @@ columns_to_summarise=['total tardiness','number of patients tardy',	'average wai
                       'number of surgeries scheduled',	'num surgeries cancelled',	'cancelation proportion']
 
 average_values = metrics_df.groupby('perfect_information_bool')[columns_to_summarise].mean().reset_index()
-average_values.to_csv(os.path.join(output_db_location_to_use,"average_values_specialty_{0}.csv".format(str(specialty_id))))
+average_values.to_csv(os.path.join(output_db_location_to_use,"average_values_specialty_{0}_disruption{1}.csv".format(str(specialty_id), is_disruption_considered_string)))
 if print_verbose: print(average_values)
 
 

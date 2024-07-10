@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from scipy.stats import norm
+import os
 
-filepath = Path("toms_code/output/databases/percentile_metrics2024-04-291430.csv")
+filepath = Path("toms_code/output/databases/experiments/percentile_metrics_debug_randseed52024-07-101355.csv")
 save_location = Path("toms_code/output/plots")
 df = pd.read_csv(filepath)
 
