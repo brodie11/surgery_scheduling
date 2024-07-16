@@ -37,7 +37,7 @@ obj_type = "t&p matrix"
 #set to true if you want to manually resolve each gurobi problem and ignore stored solutions
 solve_anyway = False
 #set how long it takes for someone to be considered tardy
-days_considered_tardy = round(3*(365/12))
+days_considered_tardy = round(2*(365/12)) #try 2 months for next disruption comparison run
 #pick start and end periods for simulation
 period_start_year = 2015 #can go 2015-3 earliest
 period_start_month = 3
@@ -47,10 +47,10 @@ simulation_start_date = pd.Timestamp(year=period_start_year, month=period_start_
 simulation_end_date = pd.Timestamp(year=period_end_year, month=period_end_month, day=1) 
 #make testing = true if running a test or something else where you don't mind the databases being 
 #deleted after. Make testing = false otherwise
-testing = False
+testing = True
 output_db_location_to_use = OUTPUT_DB_DIR
 if testing == True:
-    output_db_location_to_use = OUTPUT_DB_DIR_TEST
+    output_db_location_to_use = OUTPUT_DB_DIR_TEST  
 
 #data to collect
 columns = ['objective type', 'disruptions?', 'perfect_information_bool', 'days_considered_tardy', 'week', 'total tardiness', 'number of patients tardy', 'average wait time (priority < 0.33)', 
@@ -87,10 +87,10 @@ is_disruption_considered = True
 
 #disruption parameter
 #defined as total number of operation-session assignments which can be changed between weeks (this means we can tell people their approximate date with some certainty)
-max_disruption_parameter = 10 #max of 10 surgeries can change date between weeks
+max_disruption_parameter = 5 #max of 10 surgeries can change date between weeks
 #max disruption shift
 #defined as the maximum amount of days a surgery date can be shifted by in a given week
-max_disruption_shift = 14
+max_disruption_shift = 5
 
 #loop through each week in weeks:
 weeks = (simulation_end_date - simulation_start_date).days // 7

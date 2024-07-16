@@ -313,7 +313,7 @@ def simulate_stochastic_durations(schedDict:dict, start_date, end_date, complete
             surgeries.append(sur)
 
         #sort surgeries from smallest to biggest for consistency in cancellations
-        surgeries = sorted(surgeries, key=lambda sur: sur.ed, reverse=True)
+        # surgeries = sorted(surgeries, key=lambda sur: sur.ed, reverse=True)
         
         for sur in surgeries:
             simulated_duration = simulated_durations[sur.n]
@@ -411,7 +411,7 @@ if __name__ == '__main__':
             schedules.append((month_start,percentile_column_name,sched_sur_dict))
 
             #simulate durations 1000 times
-            num_runs = 100
+            num_runs = 1000
 
             # unpack dict to get list of all surgeries
             all_surgeries = [surg_id for surg_id_list in (surg_id_list for surg_id_list in sched_sur_dict.values()) for surg_id in surg_id_list]

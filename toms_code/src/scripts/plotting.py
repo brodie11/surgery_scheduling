@@ -6,8 +6,8 @@ import numpy as np
 from scipy.stats import norm
 import os
 
-filepath = Path("toms_code/output/databases/experiments/percentile_metrics_debug_randseed52024-07-101355.csv")
-save_location = Path("toms_code/output/plots")
+filepath = Path("../../output/databases/experiment-no-ordering-1000-runs/percentile_metrics_debug_randseed52024-07-161333.csv")
+save_location = Path("../../output/plots")
 df = pd.read_csv(filepath)
 
 # Creating subplots with multiple histograms
@@ -86,12 +86,13 @@ def twin_axis_compare(values1, label1, values2, label2, plot_title, file_name):
     # Create figure and axis objects
     fig, ax1 = plt.subplots()
 
-    percentiles = ["45th", "50th", "55th", "60th", "65th"]
+    percentiles = ["40th", "45th", "50th", "55th", "60th", "65th", "70th"]
 
     # Plot surgeries completed
     color = 'tab:blue'
     ax1.set_xlabel('Percentile Values')
     ax1.set_ylabel(label1, color=color)
+    print(f"values1:{values1}")
     ax1.plot(percentiles, values1, color=color, marker='o', linestyle='dotted')
     ax1.tick_params(axis='y', labelcolor=color)
 

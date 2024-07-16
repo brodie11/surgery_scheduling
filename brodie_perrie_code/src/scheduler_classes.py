@@ -12,7 +12,7 @@ rng = Generator(PCG64(891011))
 # Class for surgeries used while scheduling.
 class schedSurgery:
     def __init__(self, name, expected_duration, duration_variance,
-      arrive_date, due_date, cdi=0.083):
+      arrive_date, due_date, cdi=0.069):
 
       self.n = int(name)
       self.ed = expected_duration
@@ -29,11 +29,11 @@ class schedSurgery:
       self.month_banned = self.get_inconvenient_month()
 
     def get_inconvenient_day(self):
-       #returns 1 if monday inconvenient, 2 if tuesday inconvenient,... 7 if Sunday inconvenient.
+       #returns 1 if monday inconvenient, 2 if tuesday inconvenient,... 5 if Friday inconvenient.
        #returns 0 if no days are inconvenient
        random_number = rng.uniform()
        if random_number <= self.chance_of_day_week_month_preference:
-          return math.floor(rng.uniform()*7) + 1
+          return math.floor(rng.uniform()*5) + 1
        else:
           return None
        
