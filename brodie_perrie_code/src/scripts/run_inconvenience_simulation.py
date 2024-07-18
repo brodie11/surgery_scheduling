@@ -37,7 +37,7 @@ obj_type = "t&p matrix"
 #set to true if you want to manually resolve each gurobi problem and ignore stored solutions
 solve_anyway = False
 #set how long it takes for someone to be considered tardy
-days_considered_tardy = round(2*(365/12)) #try 2 months for next disruption comparison run
+days_considered_tardy = round(3*(365/12)) #try 2 months for next disruption comparison run
 #pick start and end periods for simulation
 period_start_year = 2015 #can go 2015-3 earliest
 period_start_month = 3
@@ -53,7 +53,7 @@ if testing == True:
     output_db_location_to_use = OUTPUT_DB_DIR_TEST  
 
 #data to collect
-columns = ['objective type', 'disruptions?', 'perfect_information_bool', 'days_considered_tardy', 'week', 'total tardiness', 'number of patients tardy', 'average wait time (priority < 0.33)', 
+columns = ['iteration','objective type', 'disruptions?', 'perfect_information_bool', 'days_considered_tardy', 'week', 'total tardiness', 'number of patients tardy', 'average wait time (priority < 0.33)', 
            'average wait_time (0.33 < priority < 0.66)', 'average wait time 0.66 < priority',
            'number of surgeries scheduled', 'num sessions', 'num surgeries cancelled', "cancelation proportion",
            ]
@@ -87,158 +87,165 @@ is_disruption_considered = True
 
 #disruption parameter
 #defined as total number of operation-session assignments which can be changed between weeks (this means we can tell people their approximate date with some certainty)
-max_disruption_parameter = 5 #max of 10 surgeries can change date between weeks
+max_disruption_parameter = 14 #max of 10 surgeries can change date between weeks
 #max disruption shift
 #defined as the maximum amount of days a surgery date can be shifted by in a given week
-max_disruption_shift = 5
+max_disruption_shift = 14
 
 #loop through each week in weeks:
 weeks = (simulation_end_date - simulation_start_date).days // 7
-for perfect_info_bool in [True, False]:
 
-    #partition data
-    surgeries_initial_waitlist, surgeries_to_arrive_partitioned = create_schedule_partition_surs(surgeries, simulation_start_date, simulation_end_date, days_considered_tardy, chance_of_inconvenience_for_each_day_month_week)
-    all_sess, sessions_to_arrive_partitioned = create_schedule_partition_sess(surgical_sessions, simulation_start_date, simulation_end_date)
+loop = True #set to true to run multiple times with different priority assignments for averaging purposes
+for iter in range(5):
 
-    #count patients already tardy at start
-    number_patients_tardy = len(list(filter(lambda surgery: surgery.dd < 0, surgeries_initial_waitlist)))
-    if print_verbose: print(f"number of patients already tardy at start: {number_patients_tardy}")
+    for perfect_info_bool in [True, False]:
 
-    #MAIN LOOP
-    waitlist = surgeries_initial_waitlist
+        #partition data
+        surgeries_initial_waitlist, surgeries_to_arrive_partitioned = create_schedule_partition_surs(surgeries, simulation_start_date, simulation_end_date, days_considered_tardy, chance_of_inconvenience_for_each_day_month_week)
+        all_sess, sessions_to_arrive_partitioned = create_schedule_partition_sess(surgical_sessions, simulation_start_date, simulation_end_date)
 
-    for week in range(1, weeks + 1):
+        #count patients already tardy at start
+        number_patients_tardy = len(list(filter(lambda surgery: surgery.dd < 0, surgeries_initial_waitlist)))
+        if print_verbose: print(f"number of patients already tardy at start: {number_patients_tardy}")
 
-        if print_verbose: print(f"\n\nWeek {week}\n------------------------------------------------")
+        #MAIN LOOP
+        waitlist = surgeries_initial_waitlist
 
-        #move new surgeries from new_arrivals to waitlist #TODO discuss maybe adding in overtime cancelled surgeries later?
-        new_sessions = []
-        new_surgeries = []
-        if week == 1:
-            new_sessions = sessions_to_arrive_partitioned.pop(0) + sessions_to_arrive_partitioned.pop(0)
-            new_surgeries = surgeries_to_arrive_partitioned.pop(0) + surgeries_to_arrive_partitioned.pop(0)
-        else:
-            if sessions_to_arrive_partitioned:
-                new_sessions = sessions_to_arrive_partitioned.pop(0)
-                new_surgeries = surgeries_to_arrive_partitioned.pop(0)
+        for week in range(1, weeks + 1):
 
-        if not new_sessions:
-            continue #continue if no new sessions this week
+            if print_verbose: print(f"\n\nWeek {week}\n------------------------------------------------")
 
-        # print(f"new sessions: {new_sessions}")
+            #move new surgeries from new_arrivals to waitlist #TODO discuss maybe adding in overtime cancelled surgeries later?
+            new_sessions = []
+            new_surgeries = []
+            if week == 1:
+                new_sessions = sessions_to_arrive_partitioned.pop(0) + sessions_to_arrive_partitioned.pop(0)
+                new_surgeries = surgeries_to_arrive_partitioned.pop(0) + surgeries_to_arrive_partitioned.pop(0)
+            else:
+                if sessions_to_arrive_partitioned:
+                    new_sessions = sessions_to_arrive_partitioned.pop(0)
+                    new_surgeries = surgeries_to_arrive_partitioned.pop(0)
 
-        waitlist = waitlist + new_surgeries
+            if not new_sessions:
+                continue #continue if no new sessions this week
 
-        # print(f"len waaitlist {len(waitlist)}")
+            # print(f"new sessions: {new_sessions}")
 
-        plenty_of_sess = get_plenty_of_sess(all_sess, waitlist) #make sure there's enough sessions but not too many
-        
-        #CREATE SCHEDULES
+            waitlist = waitlist + new_surgeries
 
-        #make string version of perfect_info_bool
-        perfect_info_string = "False"
-        if perfect_info_bool == True: perfect_info_string = "True"
+            # print(f"len waaitlist {len(waitlist)}")
 
-        #make string version of is_disruption_considered
-        is_disruption_considered_string = "False"
-        if is_disruption_considered == True: is_disruption_considered_string = "True"
+            plenty_of_sess = get_plenty_of_sess(all_sess, waitlist) #make sure there's enough sessions but not too many
+            
+            #CREATE SCHEDULES
 
-        #set up session to store specific week
-        db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_pi_{5}_dct_{6}_disruption_{7}.db'.format(specialty_id,
-        simulation_start_date.date(), simulation_end_date.date(), week, obj_type.replace(" ", ""),  perfect_info_string, str(days_considered_tardy), 
-        is_disruption_considered_string)
-        db_name = os.path.join(output_db_location_to_use, db_name)
+            #make string version of perfect_info_bool
+            perfect_info_string = "False"
+            if perfect_info_bool == True: perfect_info_string = "True"
 
-        if print_verbose: print(f"db name {db_name}")
+            #make string version of is_disruption_considered
+            is_disruption_considered_string = "False"
+            if is_disruption_considered == True: is_disruption_considered_string = "True"
 
-        engine = create_engine('sqlite:///' + db_name)
+            #set up session to store specific week
+            db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_pi_{5}_dct_{6}_disrup_{7}_dp_{8}_ds_{9}_l_{10}.db'.format(specialty_id,
+            simulation_start_date.date(), simulation_end_date.date(), week, obj_type.replace(" ", ""),  perfect_info_string, str(days_considered_tardy), 
+            is_disruption_considered_string, str(max_disruption_parameter), str(max_disruption_shift), str(iter))
+            db_name = os.path.join(output_db_location_to_use, db_name)
 
-        Base.metadata.create_all(engine)
+            if print_verbose: print(f"db name {db_name}")
 
-        Session = sessionmaker(bind=engine)
-        with Session() as session:
+            engine = create_engine('sqlite:///' + db_name)
 
-            #get solution and check if already been solved
-            inconvenience_sol = get_solution(session, 10, 10, 10) #fudge a little bit so I don't have to rewrite Tom's code
-            cancelled_surgeries = []
-            if inconvenience_sol is None or solve_anyway == True:
+            Base.metadata.create_all(engine)
 
-                for surgery in waitlist:
-                    get_create_sur(session, surgery.n, surgery.ed, surgery.priority)
-                for sess in plenty_of_sess:
-                    get_create_ses(session, sess.n, simulation_start_date + pd.Timedelta(days=sess.sdt), sess.tn, sess.sd)
+            Session = sessionmaker(bind=engine)
+            with Session() as session:
 
-                #otherwise, solve it
-                #this is the class that solves the linear program
-                #perfect_info_schedule = inconvenienceProb(waitlist, plenty_of_sess, turn_around, obj_type=obj_type, perfect_information=True, time_lim=30)
-                if week == 1:
-                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, is_disruption_considered, max_disruption_parameter, max_disruption_shift, init_assign = week_1_solution, perfect_information=perfect_info_bool, time_lim=time_lim_first_week) #TODO change to a longer time 
-                    week_1_solution = schedule.ses_sur_dict
-                else:
-                    schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, is_disruption_considered, max_disruption_parameter, max_disruption_shift, init_assign = current_solution, perfect_information=perfect_info_bool, time_lim=time_lim_other_weeks)                         
+                #get solution and check if already been solved
+                inconvenience_sol = get_solution(session, 10, 10, 10) #fudge a little bit so I don't have to rewrite Tom's code
+                cancelled_surgeries = []
+                if inconvenience_sol is None or solve_anyway == True:
 
-                #store solution in fudged way so don't have to rewrite Tom's code
-                inconvenience_sol = get_create_solution(session, 10,
-                10, 10, 0)
+                    for surgery in waitlist:
+                        get_create_sur(session, surgery.n, surgery.ed, surgery.priority)
+                    for sess in plenty_of_sess:
+                        get_create_ses(session, sess.n, simulation_start_date + pd.Timedelta(days=sess.sdt), sess.tn, sess.sd)
 
-                #update database
-                create_update_solution_assignments(session, inconvenience_sol.id,
-                schedule.ses_sur_dict)
-                
-            # else:
-            sess_sur_dict = get_ses_sur_dict(session, inconvenience_sol.id)
+                    #otherwise, solve it
+                    #this is the class that solves the linear program
+                    #perfect_info_schedule = inconvenienceProb(waitlist, plenty_of_sess, turn_around, obj_type=obj_type, perfect_information=True, time_lim=30)
+                    if week == 1:
+                        print(f"iter{iter}")
+                        schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, is_disruption_considered, max_disruption_parameter, max_disruption_shift, init_assign = week_1_solution, perfect_information=perfect_info_bool)
+                        # time_lim=time_lim_first_week) #TODO change to MIPGap rather than timelim
+                        week_1_solution = schedule.ses_sur_dict
+                    else:
+                        schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, is_disruption_considered, max_disruption_parameter, max_disruption_shift, init_assign = current_solution, perfect_information=perfect_info_bool)  
+                        #, time_lim=time_lim_other_weeks                       
 
-            #store week's current solution for next week warm start
-            current_solution = sess_sur_dict
+                    #store solution in fudged way so don't have to rewrite Tom's code
+                    inconvenience_sol = get_create_solution(session, 10,
+                    10, 10, 0)
 
-            # print(sess_sur_dict)
-            # print_detailed_ses_sur_dict(sess_sur_dict, waitlist, plenty_of_sess, turn_around)
+                    #update database
+                    create_update_solution_assignments(session, inconvenience_sol.id,
+                    schedule.ses_sur_dict)
+                    
+                # else:
+                sess_sur_dict = get_ses_sur_dict(session, inconvenience_sol.id)
 
-            num_sessions_to_plot = 40
-            #graph
-            create_session_graph(inconvenience_sol, session, db_name, num_sessions_to_plot)
+                #store week's current solution for next week warm start
+                current_solution = sess_sur_dict
 
-        # count how many surgeries were cancelled due to patient preference
-        if perfect_info_bool == False:
-            #cancel the surgeries that were inconvenient before solution created (they will stay on waitlist)
-            for imperfect_sessions in new_sessions:
-                imperfect_sessions = imperfect_sessions.n
-                if imperfect_sessions == -1:
-                    continue
-                sess_sched_obj = list(filter(lambda obj: obj.n == imperfect_sessions, all_sess))[0]
-                # get surgeries in session
-                surgeries_in_session = sess_sur_dict[imperfect_sessions]
-                for surgery in surgeries_in_session:
-                    surgery_sched_obj = list(filter(lambda obj: obj.n == surgery, waitlist))[0]
-                    # check if inconvenient
-                    inconvenient = is_surgery_inconvenient(sess_sched_obj.sdt, simulation_start_date, surgery_sched_obj)
-                    if inconvenient:
-                        # cancel surgery
-                        sess_sur_dict[imperfect_sessions].remove(surgery)
-                        cancelled_surgeries.append(surgery)
+                # print(sess_sur_dict)
+                # print_detailed_ses_sur_dict(sess_sur_dict, waitlist, plenty_of_sess, turn_around)
 
-        #move first 2 weeks of schedule to scheduled if first week, otherwise move first 1 week to scheduled
-        scheduled_sessions = new_sessions
+                num_sessions_to_plot = 40
+                #graph
+                create_session_graph(inconvenience_sol, session, db_name, num_sessions_to_plot)
 
-        #compute important metrics
-        metrics = compute_metrics(waitlist, scheduled_sessions, week, sess_sur_dict, cancelled_surgeries)
-        total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions, num_cancelled, proportion_cancelled = metrics
-        metrics_df.loc[len(metrics_df.index)] = [obj_type, is_disruption_considered_string, perfect_info_string, days_considered_tardy, week, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled,num_sessions,num_cancelled, proportion_cancelled]
+            # count how many surgeries were cancelled due to patient preference
+            if perfect_info_bool == False:
+                #cancel the surgeries that were inconvenient before solution created (they will stay on waitlist)
+                for imperfect_sessions in new_sessions:
+                    imperfect_sessions = imperfect_sessions.n
+                    if imperfect_sessions == -1:
+                        continue
+                    sess_sched_obj = list(filter(lambda obj: obj.n == imperfect_sessions, all_sess))[0]
+                    # get surgeries in session
+                    surgeries_in_session = sess_sur_dict[imperfect_sessions]
+                    for surgery in surgeries_in_session:
+                        surgery_sched_obj = list(filter(lambda obj: obj.n == surgery, waitlist))[0]
+                        # check if inconvenient
+                        inconvenient = is_surgery_inconvenient(sess_sched_obj.sdt, simulation_start_date, surgery_sched_obj)
+                        if inconvenient:
+                            # cancel surgery
+                            sess_sur_dict[imperfect_sessions].remove(surgery)
+                            cancelled_surgeries.append(surgery)
 
-        #remove scheduled sessions from all_sess and scheduled surgeries from waitlist
-        ids_of_surgery_scheduled = []
-        for scheduled_session in scheduled_sessions:
-            ids_of_surgery_scheduled = ids_of_surgery_scheduled + sess_sur_dict[scheduled_session.n]
+            #move first 2 weeks of schedule to scheduled if first week, otherwise move first 1 week to scheduled
+            scheduled_sessions = new_sessions
 
-        # print(f"len(waitlist){len(waitlist)}")
-        # print(f"len(waitlist){len(all_sess)}")
-        waitlist = [surgery for surgery in waitlist if surgery.n not in ids_of_surgery_scheduled]
-        all_sess = [session for session in all_sess if session not in scheduled_sessions]
-        # print(f"len(waitlist){len(waitlist)}")
-        # print(f"len(waitlist){len(all_sess)}")
+            #compute important metrics
+            metrics = compute_metrics(waitlist, scheduled_sessions, week, sess_sur_dict, cancelled_surgeries)
+            total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions, num_cancelled, proportion_cancelled = metrics
+            metrics_df.loc[len(metrics_df.index)] = [iter, obj_type, is_disruption_considered_string, perfect_info_string, days_considered_tardy, week, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled,num_sessions,num_cancelled, proportion_cancelled]
+            metrics_df.to_csv(os.path.join(output_db_location_to_use, obj_type.replace(" ", "") + "_specialty_" + str(specialty_id).replace(" ", "") + "_metrics.csv"))
 
-        metrics_df.to_csv(os.path.join(output_db_location_to_use, obj_type.replace(" ", "") + "_specialty_" + str(specialty_id).replace(" ", "") + "_metrics.csv"))
+            #remove scheduled sessions from all_sess and scheduled surgeries from waitlist
+            ids_of_surgery_scheduled = []
+            for scheduled_session in scheduled_sessions:
+                ids_of_surgery_scheduled = ids_of_surgery_scheduled + sess_sur_dict[scheduled_session.n]
 
+            # print(f"len(waitlist){len(waitlist)}")
+            # print(f"len(waitlist){len(all_sess)}")
+            waitlist = [surgery for surgery in waitlist if surgery.n not in ids_of_surgery_scheduled]
+            all_sess = [session for session in all_sess if session not in scheduled_sessions]
+            # print(f"len(waitlist){len(waitlist)}")
+            # print(f"len(waitlist){len(all_sess)}")
+    if loop == False:
+        break
 
 #TODO compare the two schedules
 columns_to_summarise=['total tardiness','number of patients tardy',	'average wait time (priority < 0.33)',	
