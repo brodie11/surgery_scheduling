@@ -186,7 +186,9 @@ def compute_metrics(waitlist, scheduled_sessions, week, ses_sur_dict, cancelled_
 class inconvenienceProb:
   # Copy and sort the surgeries and sessions, build the model, then solve the
   # model.
-  def __init__(self, surgeries, sessions, turn_around, obj_type, is_disruption_considered, max_disruption_parameter, max_disruption_shift, time_lim=300, init_assign=None, perfect_information=False):
+  def __init__(self, iter, surgeries, sessions, turn_around, obj_type, is_disruption_considered, max_disruption_parameter, max_disruption_shift, time_lim=300, init_assign=None, perfect_information=False):
+
+    self.iter = iter
 
     self.ops = deepcopy(surgeries)
     self.sess = deepcopy(sessions)
@@ -347,8 +349,12 @@ class inconvenienceProb:
 
     for j, s in enumerate(self.sess):
       for i, o in enumerate(self.ops):
-        if self.x[o.n, s.n].X > 0.99:
-          self.ses_sur_dict[s.n].append(o.n)
+        try:
+          if self.x[o.n, s.n].X > 0.99:
+            self.ses_sur_dict[s.n].append(o.n)
+        except:
+           print(f"self.x[o.n,s.n] {self.x[o.n,s.n]}")
+           print(f"self.iter{self.iter}")
           # print('Scheduled:', i, o.n, int(o.ed), o.priority)
     print(self.prob.objVal)
 

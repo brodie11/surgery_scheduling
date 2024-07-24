@@ -72,44 +72,49 @@ with Session() as session:
         simulation_start_date, simulation_end_date)
 
 # Filter surgeries and sessions to the specialty and facility of interest.
-surgeries = surgeries.loc[(surgeries['specialty_id'] == specialty_id) &
+surgeries_master = surgeries.loc[(surgeries['specialty_id'] == specialty_id) &
     (surgeries['facility'] == facility)]
-surgical_sessions = surgical_sessions.loc[(surgical_sessions['specialty_id'] == specialty_id) &
+surgical_sessions_master = surgical_sessions.loc[(surgical_sessions['specialty_id'] == specialty_id) &
     (surgical_sessions['facility'] == facility)]
 
 # Convert start_time to datetime if it's not already in datetime format
-surgical_sessions['start_time'] = pd.to_datetime(surgical_sessions['start_time'])
+surgical_sessions_master['start_time'] = pd.to_datetime(surgical_sessions['start_time'])
 
-current_solution = None
-week_1_solution = None
-
-is_disruption_considered = True
+is_disruption_considered = False
 
 #disruption parameter
 #defined as total number of operation-session assignments which can be changed between weeks (this means we can tell people their approximate date with some certainty)
-max_disruption_parameter = 14 #max of 10 surgeries can change date between weeks
+max_disruption_parameter = 1000 #max of 10 surgeries can change date between weeks
 #max disruption shift
 #defined as the maximum amount of days a surgery date can be shifted by in a given week
-max_disruption_shift = 14
+max_disruption_shift = 1000
 
 #loop through each week in weeks:
 weeks = (simulation_end_date - simulation_start_date).days // 7
 
 loop = True #set to true to run multiple times with different priority assignments for averaging purposes
-for iter in range(5):
+for iter in range(10):
+
+    current_solution = None
+    week_1_solution = None
+
+    #use same patients for both perfect and imperfect info
+    surgeries_initial_waitlist, surgeries_to_arrive_partitioned_master = create_schedule_partition_surs(surgeries_master, simulation_start_date, simulation_end_date, days_considered_tardy, chance_of_inconvenience_for_each_day_month_week)
+    all_sess_master, sessions_to_arrive_partitioned_master = create_schedule_partition_sess(surgical_sessions_master, simulation_start_date, simulation_end_date)
 
     for perfect_info_bool in [True, False]:
-
-        #partition data
-        surgeries_initial_waitlist, surgeries_to_arrive_partitioned = create_schedule_partition_surs(surgeries, simulation_start_date, simulation_end_date, days_considered_tardy, chance_of_inconvenience_for_each_day_month_week)
-        all_sess, sessions_to_arrive_partitioned = create_schedule_partition_sess(surgical_sessions, simulation_start_date, simulation_end_date)
 
         #count patients already tardy at start
         number_patients_tardy = len(list(filter(lambda surgery: surgery.dd < 0, surgeries_initial_waitlist)))
         if print_verbose: print(f"number of patients already tardy at start: {number_patients_tardy}")
 
-        #MAIN LOOP
-        waitlist = surgeries_initial_waitlist
+        #re-load same patients as used for perfect info and non-perfect info by loading in the unchanged master copies
+        surgeries = surgeries_master.copy()
+        surgical_sessions = surgeries_master.copy()
+        waitlist = surgeries_initial_waitlist.copy()
+        surgeries_to_arrive_partitioned = surgeries_to_arrive_partitioned_master.copy()
+        sessions_to_arrive_partitioned = sessions_to_arrive_partitioned_master.copy()
+        all_sess = all_sess_master.copy()
 
         for week in range(1, weeks + 1):
 
@@ -118,6 +123,8 @@ for iter in range(5):
             #move new surgeries from new_arrivals to waitlist #TODO discuss maybe adding in overtime cancelled surgeries later?
             new_sessions = []
             new_surgeries = []
+            if week == 1 and perfect_info_bool == False and iter == 0:
+                print("yo")
             if week == 1:
                 new_sessions = sessions_to_arrive_partitioned.pop(0) + sessions_to_arrive_partitioned.pop(0)
                 new_surgeries = surgeries_to_arrive_partitioned.pop(0) + surgeries_to_arrive_partitioned.pop(0)
@@ -177,12 +184,17 @@ for iter in range(5):
                     #perfect_info_schedule = inconvenienceProb(waitlist, plenty_of_sess, turn_around, obj_type=obj_type, perfect_information=True, time_lim=30)
                     if week == 1:
                         print(f"iter{iter}")
-                        schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, is_disruption_considered, max_disruption_parameter, max_disruption_shift, init_assign = week_1_solution, perfect_information=perfect_info_bool)
-                        # time_lim=time_lim_first_week) #TODO change to MIPGap rather than timelim
+                        schedule = inconvenienceProb(iter, waitlist, all_sess, turn_around, obj_type, 
+                                                     is_disruption_considered, max_disruption_parameter, 
+                                                     max_disruption_shift, init_assign = week_1_solution, 
+                                                     perfect_information=perfect_info_bool, time_lim=time_lim_first_week) #TODO change to MIPGap rather than timelim
                         week_1_solution = schedule.ses_sur_dict
                     else:
-                        schedule = inconvenienceProb(waitlist, all_sess, turn_around, obj_type, is_disruption_considered, max_disruption_parameter, max_disruption_shift, init_assign = current_solution, perfect_information=perfect_info_bool)  
-                        #, time_lim=time_lim_other_weeks                       
+                        schedule = inconvenienceProb(iter, waitlist, all_sess, turn_around, obj_type, 
+                                                     is_disruption_considered, max_disruption_parameter, 
+                                                     max_disruption_shift, init_assign = current_solution, 
+                                                     perfect_information=perfect_info_bool, 
+                                                     time_lim=time_lim_other_weeks)                      
 
                     #store solution in fudged way so don't have to rewrite Tom's code
                     inconvenience_sol = get_create_solution(session, 10,
