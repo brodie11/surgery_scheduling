@@ -5,7 +5,7 @@ import seaborn as sns
 import numpy as np
 from scipy.stats import norm
 
-filepath = Path("toms_code/output/databases/percentile_metrics_debug_randseed52024-06-241748.csv")
+filepath = Path("toms_code/output/databases/experiment-no-ordering-1000-runs/percentile_metrics_debug_s0fA_ordered2024-07-251001.csv")
 save_location = Path("brodie_perrie_code/output/plots/debug/random_seed")
 df = pd.read_csv(filepath)
 
@@ -70,12 +70,12 @@ def plot_normal(data, label, colour, column):
 plt.figure(figsize=(8, 6))
 column = 'num_surgeries_completed'
 colours = ['#ef476f', '#f78c6b', '#ffd166', '#06d6a0', '#118ab2', '#073b4c']
-plot_normal(data1, label="45th", colour=colours[0], column=column)
-plot_normal(data2, label="50th", colour=colours[1], column=column)
-plot_normal(data3, label="55th", colour=colours[2], column=column)
-plot_normal(data4, label="60th", colour=colours[3], column=column)
-plot_normal(data5, label="65th", colour=colours[4], column=column)
-plot_normal(data6, label="70th", colour=colours[5], column=column)
+# plot_normal(data1, label="45th", colour=colours[0], column=column)
+# plot_normal(data2, label="50th", colour=colours[1], column=column)
+# plot_normal(data3, label="55th", colour=colours[2], column=column)
+# plot_normal(data4, label="60th", colour=colours[3], column=column)
+# plot_normal(data5, label="65th", colour=colours[4], column=column)
+# plot_normal(data6, label="70th", colour=colours[5], column=column)
 
 plt.title("Comparison of PDFS for different percentile values")
 plt.ylabel("PDF")
@@ -118,10 +118,10 @@ twin_axis_compare(values1=average_surgeries_completed,label1=label1, values2=ave
 
 # Plot twin axis comparison for average surgery utilisation and total mins overtime
 average_surgery_utilisation = df.groupby('percentile_column_name')['average_session_utilisation'].mean()
-label1 = "Average Surgery Utilisation"
+label1 = "Average Session Utilisation"
 total_mins_overtime = df.groupby('percentile_column_name')['total_mins_overtime'].mean()
-label2 = "Total Mins Overtime"
-plot_title = 'Average Surgery Utilisation vs. Total Mins Overtime'
+label2 = "Average Mins Overtime Per Schedule"
+plot_title = 'Average Session Utilisation vs. Average Mins Overtime Per Schedule'
 file_name = 'utilisation_vs_overtime.png'
 twin_axis_compare(values1=average_surgery_utilisation,label1=label1, values2=total_mins_overtime, label2=label2, plot_title=plot_title, file_name=file_name)
 

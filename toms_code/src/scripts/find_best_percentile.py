@@ -16,10 +16,10 @@ import matplotlib.pyplot as plt
 
 
 # Perrie's path 
-# repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/toms_code/src")
+repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/toms_code/src")
 
 # Brodie's path path 
-repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/toms_code/src")
+# repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/toms_code/src")
 
 sys.path.append(str(repo_path))
 
@@ -313,7 +313,7 @@ def simulate_stochastic_durations(schedDict:dict, start_date, end_date, complete
             surgeries.append(sur)
 
         #sort surgeries from smallest to biggest for consistency in cancellations
-        # surgeries = sorted(surgeries, key=lambda sur: sur.ed, reverse=True)
+        surgeries = sorted(surgeries, key=lambda sur: sur.ed, reverse=False)
         
         for sur in surgeries:
             simulated_duration = simulated_durations[sur.n]
@@ -363,8 +363,9 @@ if __name__ == '__main__':
 
     # Pick a few different percentile values to simulate for eg. (45,50,55,60,65)
     percentile_values = [40,45,50,55,60,65,70]
+    # percentile_values = [40,50,60,70]
     percentile_column_names = ['duration_40th_percentile','duration_45th_percentile', 'duration_50th_percentile', 'duration_55th_percentile', 'duration_60th_percentile', 'duration_65th_percentile','duration_70th_percentile']
-
+    # percentile_column_names = ['duration_40th_percentile', 'duration_50th_percentile', 'duration_60th_percentile', 'duration_70th_percentile']
 
     #TODO figure out which facility is best to use
 
@@ -385,8 +386,10 @@ if __name__ == '__main__':
     month_starts = month_starts[0:-1]
 
     #set up specialty and facility to simulate for
-    specialty = 4
+    specialty = 0
     facility = "A"
+    # allowed overtime
+    overtime = 30
 
     #store schedules in here as well as dataframe
     schedules = [] #array of tuples (start_date, percentile_value, ses_sur_dict)
@@ -418,10 +421,10 @@ if __name__ == '__main__':
             all_surgeries.sort()
 
             for j in range(num_runs):
-                #simulate 100 runs of sched_surgery_for_percentile
+                #simulate 1000 runs of sched_surgery_for_percentile
                 result = simulate_stochastic_durations(
                     sched_sur_dict, month_start,
-                    month_start + pd.DateOffset(months=1), complete_surg_list=all_surgeries, percentile_value=percentile_value, specialty_id = specialty, facility = facility, allowed_overtime=0)
+                    month_start + pd.DateOffset(months=1), complete_surg_list=all_surgeries, percentile_value=percentile_value, specialty_id = specialty, facility = facility, allowed_overtime=overtime)
                 #get metrics from temporary result variable
                 num_surgeries_completed, average_surgery_utilisation, total_mins_overtime, total_surgery_time, num_sessions_that_run_overtime, num_sessions_with_cancelled_surgeries, num_surgeries_cancelled = result
                     # append data to df
@@ -444,5 +447,5 @@ if __name__ == '__main__':
     formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M')
     date = formatted_datetime.split(" ")[0] + formatted_datetime.split(" ")[1].split(":")[0] + formatted_datetime.split(" ")[1].split(":")[1] #remove spaces
 
-    best_percentile_df.to_csv(os.path.join(OUTPUT_DB_DIR, "percentile_metrics_debug_randseed5" + date + ".csv"), index=False)
+    best_percentile_df.to_csv(os.path.join(OUTPUT_DB_DIR, "percentile_metrics_debug_s0fA_ordered" + date + ".csv"), index=False)
     
