@@ -134,6 +134,15 @@ plot_title = '# Overtime sessions vs. # Sessions with cancelled surgeries'
 file_name = 'num_overtime_vs_num_cancelled.png'
 twin_axis_compare(values1=num_sessions_that_run_overtime,label1=label1, values2=num_sessions_with_cancelled_surgeries, label2=label2, plot_title=plot_title, file_name=file_name)
 
+# Plot twin axis comparison for number of sessions that run overtime and number of sessions with cancelled surgeries
+average_surgery_utilisation = df.groupby('percentile_column_name')['average_session_utilisation'].mean()
+label1 = "Average Session Utilisation"
+average_surgeries_cancelled = df.groupby('percentile_column_name')['num_surgeries_cancelled'].mean()
+label2 = "Average Surgeries Cancelled"
+plot_title = 'Average Session Utilisation vs. Average Number of Cancelled Surgeries'
+file_name = 'avg_util_vs_avg_cancelled.png'
+twin_axis_compare(values1=average_surgery_utilisation,label1=label1, values2=average_surgeries_cancelled, label2=label2, plot_title=plot_title, file_name=file_name)
+
 # plot sum of cancelled and completed session
 grouped_df = df.groupby('percentile_column_name').agg({
     'num_surgeries_completed': 'sum',
