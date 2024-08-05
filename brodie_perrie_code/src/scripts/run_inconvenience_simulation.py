@@ -7,22 +7,21 @@ from sqlalchemy.orm import sessionmaker
 import pandas as pd
 
 # Perrie's path 
-# repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/brodie_perrie_code/src")
+repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/brodie_perrie_code/src")
 
 # Brodie's path path 
-repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/brodie_perrie_code/src")
+# repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/brodie_perrie_code/src")
 
 sys.path.append(str(repo_path))
-from configs import DATABASE_DIR, OUTPUT_DB_DIR, DATA_FILE, OUTPUT_DB_DIR_TEST
+from configs import OUTPUT_DB_DIR, DATA_FILE, OUTPUT_DB_DIR_TEST
 from scheduler_utils import (
   prepare_data, create_schedule_partition_surs, create_schedule_partition_sess)
-from scheduler_classes import (schedProb, priorityProb)
 from solution_classes import (Base, get_create_solution,
   create_update_solution_assignments,
-  get_solution, get_ses_sur_dict, create_update_solution_transfers)
+  get_solution, get_ses_sur_dict)
 from visualise import create_session_graph
-from classes import (schedSurgery, schedSession)
-from helper_funcs import (inconvenienceProb, compute_metrics, print_detailed_ses_sur_dict,is_surgery_inconvenient, get_plenty_of_sess)
+from percentile_functions import (replace_ev_with_percentile)
+from helper_funcs import (inconvenienceProb, compute_metrics, is_surgery_inconvenient, get_plenty_of_sess)
 from solution_classes import get_create_sur, get_create_ses
 
 #choose specialty, faclility, turn_around, etc.
@@ -32,6 +31,8 @@ time_lim_first_week = 200
 time_lim_other_weeks = 20
 print_verbose = False
 turn_around = 15
+percentile_value = 50
+solve_percentiles = True # set to false if want to use the mean and no uncertainty
 chance_of_inconvenience_for_each_day_month_week = 0.083
 obj_type = "t&p matrix"
 #set to true if you want to manually resolve each gurobi problem and ignore stored solutions
@@ -111,7 +112,7 @@ for iter in range(10):
 
         #re-load same patients as used for perfect info and non-perfect info by loading in the unchanged master copies
         surgeries = surgeries_master.copy()
-        surgical_sessions = surgeries_master.copy()
+        surgical_sessions = surgical_sessions_master.copy()
         waitlist = surgeries_initial_waitlist.copy()
         surgeries_to_arrive_partitioned = surgeries_to_arrive_partitioned_master.copy()
         sessions_to_arrive_partitioned = sessions_to_arrive_partitioned_master.copy()
@@ -121,7 +122,8 @@ for iter in range(10):
 
             if print_verbose: print(f"\n\nWeek {week}\n------------------------------------------------")
 
-            #move new surgeries from new_arrivals to waitlist #TODO discuss maybe adding in overtime cancelled surgeries later?
+            #move new surgeries from new_arrivals to waitlist 
+            #TODO discuss maybe adding in overtime cancelled surgeries later?
             new_sessions = []
             new_surgeries = []
             if week == 1 and perfect_info_bool == False and iter == 0:
@@ -171,10 +173,13 @@ for iter in range(10):
             with Session() as session:
 
                 #get solution and check if already been solved
+                # TODO: check if solution has been solved for specified percentile
                 inconvenience_sol = get_solution(session, 10, 10, 10) #fudge a little bit so I don't have to rewrite Tom's code
                 cancelled_surgeries = []
                 if inconvenience_sol is None or solve_anyway == True:
-
+                    # change ed to percentile value if using percentiles
+                    if solve_percentiles:
+                        waitlist = replace_ev_with_percentile(waitlist, percentile_value)
                     for surgery in waitlist:
                         get_create_sur(session, surgery.n, surgery.ed, surgery.priority)
                     for sess in plenty_of_sess:
@@ -219,6 +224,10 @@ for iter in range(10):
                 num_sessions_to_plot = 40
                 #graph
                 create_session_graph(inconvenience_sol, session, db_name, num_sessions_to_plot)
+
+            # run simulation of surgery durations
+
+
 
             # count how many surgeries were cancelled due to patient preference
             if perfect_info_bool == False:

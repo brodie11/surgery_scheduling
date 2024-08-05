@@ -1,7 +1,6 @@
 import sys
 
 from copy import deepcopy
-import numpy as np
 from gurobipy import Model, GRB, quicksum
 from operator import attrgetter
 from sqlalchemy import create_engine
