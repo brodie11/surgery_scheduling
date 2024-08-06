@@ -124,7 +124,7 @@ def print_detailed_ses_sur_dict(sess_sur_dict, waitlist, plenty_of_sess, turn_ar
 
         print(f"  combined surgery durations for session {session_id} is {combined_surgery_duration - turn_around}")
          
-def compute_metrics(waitlist, scheduled_sessions, week, ses_sur_dict, cancelled_surgeries):
+def compute_metrics(waitlist, scheduled_sessions, week, completed_surgeries, num_cancelled_surgeries):
 
     total_tardiness = 0
     number_patients_tardy = 0
@@ -136,11 +136,11 @@ def compute_metrics(waitlist, scheduled_sessions, week, ses_sur_dict, cancelled_
     #For each scheduled session
     for session in scheduled_sessions:
         #get associated surgery ids
-        scheduled_surgery_ids = ses_sur_dict[session.n]
-        num_surs_scheduled += len(scheduled_surgery_ids)
+        # scheduled_surgery_ids = ses_sur_dict[session.n]
+        num_surs_scheduled += len(completed_surgeries)
 
         #and surgery objects
-        scheduled_surgeries = [surgery for surgery in waitlist if surgery.n in scheduled_surgery_ids]
+        scheduled_surgeries = [surgery for surgery in waitlist if surgery.n in completed_surgeries]
         
         for surgery in scheduled_surgeries:
           tardiness = max(0, session.sdt - surgery.dd)
@@ -176,10 +176,10 @@ def compute_metrics(waitlist, scheduled_sessions, week, ses_sur_dict, cancelled_
         sys.exit(0)
     
     num_sessions = len(scheduled_sessions)
-    num_cancelled = len(cancelled_surgeries)
-    proportion_cancelled = num_cancelled / (num_surs_scheduled + num_cancelled)
+    # num_cancelled = len(cancelled_surgeries)
+    proportion_cancelled = num_cancelled_surgeries / (num_surs_scheduled + num_cancelled_surgeries)
 
-    return num_sessions, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions, num_cancelled, proportion_cancelled
+    return num_sessions, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions, num_cancelled_surgeries, proportion_cancelled
 
 # Class that builds and solves the MIP models for scheduling.
 class inconvenienceProb:

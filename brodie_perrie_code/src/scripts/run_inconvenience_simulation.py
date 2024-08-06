@@ -20,7 +20,7 @@ from solution_classes import (Base, get_create_solution,
   create_update_solution_assignments,
   get_solution, get_ses_sur_dict)
 from visualise import create_session_graph
-from percentile_functions import (replace_ev_with_percentile)
+from percentile_functions import (replace_ev_with_percentile, simulate_durations, execute_schedule)
 from helper_funcs import (inconvenienceProb, compute_metrics, is_surgery_inconvenient, get_plenty_of_sess)
 from solution_classes import get_create_sur, get_create_ses
 
@@ -31,12 +31,13 @@ time_lim_first_week = 200
 time_lim_other_weeks = 20
 print_verbose = False
 turn_around = 15
+allowed_overtime = 30
 percentile_value = 50
 solve_percentiles = True # set to false if want to use the mean and no uncertainty
 chance_of_inconvenience_for_each_day_month_week = 0.083
 obj_type = "t&p matrix"
 #set to true if you want to manually resolve each gurobi problem and ignore stored solutions
-solve_anyway = False
+solve_anyway = True
 #set how long it takes for someone to be considered tardy
 days_considered_tardy = round(3*(365/12)) #try 2 months for next disruption comparison run
 #pick start and end periods for simulation
@@ -225,46 +226,52 @@ for iter in range(10):
                 #graph
                 create_session_graph(inconvenience_sol, session, db_name, num_sessions_to_plot)
 
-            # run simulation of surgery durations
+            if solve_percentiles:
+                # run simulation of surgery durations
+                simulated_durations = simulate_durations(new_sessions, waitlist, sess_sur_dict)
+            session_days_since_start = 0    
 
-
-
-            # count how many surgeries were cancelled due to patient preference
-            if perfect_info_bool == False:
-                #cancel the surgeries that were inconvenient before solution created (they will stay on waitlist)
-                for imperfect_sessions in new_sessions:
-                    imperfect_sessions = imperfect_sessions.n
-                    if imperfect_sessions == -1:
-                        continue
-                    sess_sched_obj = list(filter(lambda obj: obj.n == imperfect_sessions, all_sess))[0]
-                    # get surgeries in session
-                    surgeries_in_session = sess_sur_dict[imperfect_sessions]
-                    for surgery in surgeries_in_session:
-                        surgery_sched_obj = list(filter(lambda obj: obj.n == surgery, waitlist))[0]
-                        # check if inconvenient
-                        inconvenient = is_surgery_inconvenient(sess_sched_obj.sdt, simulation_start_date, surgery_sched_obj)
-                        if inconvenient:
-                            # cancel surgery
-                            sess_sur_dict[imperfect_sessions].remove(surgery)
-                            cancelled_surgeries.append(surgery)
+            # execute the schedule
+            utilisation, overtime, num_cancelled_over, num_cancelled_pref, time_operating, completed_surgeries = execute_schedule(simulated_durations, sess_sur_dict, new_sessions, waitlist, turn_around, allowed_overtime, solve_percentiles, simulation_start_date)
+            # get number of surgeries cancelled for each reason
+            total_cancelled_over = sum(num_cancelled_over)
+            total_cancelled_pref = sum(num_cancelled_pref)
+            # # count how many surgeries were cancelled due to patient preference
+            # if perfect_info_bool == False:
+            #     #cancel the surgeries that were inconvenient before solution created (they will stay on waitlist)
+            #     for imperfect_sessions in new_sessions:
+            #         imperfect_sessions = imperfect_sessions.n
+            #         if imperfect_sessions == -1:
+            #             continue
+            #         sess_sched_obj = list(filter(lambda obj: obj.n == imperfect_sessions, all_sess))[0]
+            #         # get surgeries in session
+            #         surgeries_in_session = sess_sur_dict[imperfect_sessions]
+            #         for surgery in surgeries_in_session:
+            #             surgery_sched_obj = list(filter(lambda obj: obj.n == surgery, waitlist))[0]
+            #             # check if inconvenient
+            #             inconvenient = is_surgery_inconvenient(sess_sched_obj.sdt, simulation_start_date, surgery_sched_obj)
+            #             if inconvenient:
+            #                 # cancel surgery
+            #                 sess_sur_dict[imperfect_sessions].remove(surgery)
+            #                 cancelled_surgeries.append(surgery)
 
             #move first 2 weeks of schedule to scheduled if first week, otherwise move first 1 week to scheduled
             scheduled_sessions = new_sessions
 
-            #compute important metrics
-            metrics = compute_metrics(waitlist, scheduled_sessions, week, sess_sur_dict, cancelled_surgeries)
+            #compute important metrics (cancelled due to preferences)
+            metrics = compute_metrics(waitlist, scheduled_sessions, week, completed_surgeries, total_cancelled_pref)
             num_sessions, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions, num_cancelled, proportion_cancelled = metrics
             metrics_df.loc[len(metrics_df.index)] = [iter, obj_type, is_disruption_considered_string, perfect_info_string, days_considered_tardy, week, num_sessions, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled,num_sessions,num_cancelled, proportion_cancelled]
             metrics_df.to_csv(os.path.join(output_db_location_to_use, obj_type.replace(" ", "") + "_specialty_" + str(specialty_id).replace(" ", "") + "_metrics.csv"))
 
-            #remove scheduled sessions from all_sess and scheduled surgeries from waitlist
-            ids_of_surgery_scheduled = []
-            for scheduled_session in scheduled_sessions:
-                ids_of_surgery_scheduled = ids_of_surgery_scheduled + sess_sur_dict[scheduled_session.n]
+            # #remove scheduled sessions from all_sess and scheduled surgeries from waitlist
+            # ids_of_surgery_scheduled = []
+            # for scheduled_session in scheduled_sessions:
+            #     ids_of_surgery_scheduled = ids_of_surgery_scheduled + sess_sur_dict[scheduled_session.n]
 
             # print(f"len(waitlist){len(waitlist)}")
             # print(f"len(waitlist){len(all_sess)}")
-            waitlist = [surgery for surgery in waitlist if surgery.n not in ids_of_surgery_scheduled]
+            waitlist = [surgery for surgery in waitlist if surgery.n not in completed_surgeries]
             all_sess = [session for session in all_sess if session not in scheduled_sessions]
             # print(f"len(waitlist){len(waitlist)}")
             # print(f"len(waitlist){len(all_sess)}")
