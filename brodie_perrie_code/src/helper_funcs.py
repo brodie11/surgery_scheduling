@@ -90,6 +90,108 @@ import pandas as pd
 #     # Show the plot
 #     plt.show()
 
+#get priority and amount of time patient knew about session for before being locked in
+def get_priority_and_warning_time_for_all_surgeries_df(all_swapped_surgery_ids, disruption_count_df , actual_schedule):
+
+    priority_and_warning_time_for_all_surgeries_df = pd.DataFrame(columns=['session_id', 'count', 'priority', 'warning time'], data={})
+
+    row = 0
+
+    master_dict = actual_schedule.get_dict()
+    sessions = actual_schedule.get_sessions()
+    for session_id, surgeries in master_dict.items():
+        session = [sess for sess in sessions if sess.n == session_id]
+
+        for surgery in surgeries:
+            count = disruption_count_df[disruption_count_df['surgery_id'] == surgery.n].values[0]
+            priority = surgery.priority
+            weeks_since_last_disruption = 0                                    
+            for weeks_cancellations in reversed(all_swapped_surgery_ids):
+                if surgery.n in weeks_cancellations:
+                    weeks_since_last_disruption += 1
+                else:
+                    break
+
+        row += 1
+        priority_and_warning_time_for_all_surgeries_df.loc[len(priority_and_warning_time_for_all_surgeries_df)] = [session_id, count, priority, weeks_since_last_disruption]
+
+    return priority_and_warning_time_for_all_surgeries_df
+
+class BetterScheduleObj():
+
+#stores a dict of session id: [list of surgery objects] alongside a bunch of functions to make it easier to retrieve things
+
+  def __init__(self):
+      self.sessions = []
+      self.sessionIds = []
+      self.surgeries = []
+      self.surgeryIds = []
+      self.dict = {}
+    
+  def get_dict(self):
+     return self.dict
+  def get_sessions(self):
+     return self.sessions
+  def get_sessionIds(self):
+     return self.sessionIds
+  def get_surgeries(self, sessionID):
+     return self.dict[sessionID]
+  
+  def fill_better_schedule(self, sess_sur_dict, sessionObjs, surgery_objs):
+     for session_id, surgery_IDs in sess_sur_dict.items():
+        self.sessionIds.append(session_id)
+        self.sessions = self.sessions + [sess for sess in sessionObjs if sess.n == session_id]
+        #find corresponding object based on surgeryIDs in surgery_Objs and add to dict as a list
+        self.dict[session_id] = list(filter(lambda x: x.n in surgery_IDs, surgery_objs))
+        
+  def fill_session(self, session, surgery_objs):
+     self.dict[session.n] = surgery_objs
+     self.sessions.append(session)
+     
+  
+def get_disruption_count_cv(all_swapped_surgery_ids):
+
+        #COUNT DISRUPTIONS (make df)
+        #flatten
+        flattened_all_disruptions = sum(all_swapped_surgery_ids, [])
+        #list of dictionaries
+        list_of_dicts_for_df = []
+        #get unique surgery ids
+        unique_surgeries = list(set(flattened_all_disruptions))
+        #loop through
+        for unique_surgery in unique_surgeries:
+            dict = {}
+            count = flattened_all_disruptions.count(unique_surgery)
+            dict['surgery_id'] = unique_surgery
+            dict['discruption count'] = count
+            list_of_dicts_for_df.append(dict)
+        discruption_count = pd.DataFrame(list_of_dicts_for_df)
+        return discruption_count
+
+def get_operations_which_changed(sess_sur_dict1, sess_sur_dict2, new_surgeries):
+  #create list of all swapped surgeries between weeks
+  list_of_swapped_surgey_ids = []
+  #loop through sessions
+  for session2_id, surgeries2_array in sess_sur_dict2.items():
+
+      #loop through surgeries
+      for surgery2 in surgeries2_array:
+          
+          if surgery2 == 14271:
+            print("yo")
+
+          #if surgery is new arrival then can't have been disrupted so ignore
+          if len(list(filter(lambda x: x.n == surgery2, new_surgeries))) > 0:
+              continue
+          #if session new then any non-new surgeries must have been swapped so add to list
+          if session2_id not in sess_sur_dict1:
+              list_of_swapped_surgey_ids.append(surgery2)
+          elif surgery2 not in sess_sur_dict1[session2_id]:
+          #if surgery in different session to what it was then must have been swapped so add to list
+              list_of_swapped_surgey_ids.append(surgery2)
+
+  return list_of_swapped_surgey_ids
+
 def get_plenty_of_sess(all_sess, waitlist):
   duration_of_all_surgeries = sum([surgery.ed for surgery in waitlist])
   avg_duration_of_all_sessions = sum([session.sdt for session in all_sess]) / len(all_sess)
