@@ -177,7 +177,7 @@ for iter in range(10):
                 # TODO: check if solution has been solved for specified percentile
                 inconvenience_sol = get_solution(session, 10, 10, 10) #fudge a little bit so I don't have to rewrite Tom's code
                 cancelled_surgeries = []
-                if inconvenience_sol is None or solve_anyway == True:
+                if inconvenience_sol is None or solve_anyway:
                     # change ed to percentile value if using percentiles
                     if solve_percentiles:
                         waitlist = replace_ev_with_percentile(waitlist, percentile_value)
