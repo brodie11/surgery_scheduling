@@ -228,8 +228,7 @@ for iter in range(10):
 
             if solve_percentiles:
                 # run simulation of surgery durations
-                simulated_durations = simulate_durations(new_sessions, waitlist, sess_sur_dict)
-            session_days_since_start = 0    
+                simulated_durations = simulate_durations(new_sessions, waitlist, sess_sur_dict) 
 
             # execute the schedule
             utilisation, overtime, num_cancelled_over, num_cancelled_pref, time_operating, completed_surgeries = execute_schedule(simulated_durations, sess_sur_dict, new_sessions, waitlist, turn_around, allowed_overtime, solve_percentiles, simulation_start_date)
