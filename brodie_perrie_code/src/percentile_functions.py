@@ -68,7 +68,7 @@ def simulate_durations(weeks_sessions, weeks_surgeries, sess_surg_dict):
     return simulated_durations
 
 
-def execute_schedule(simulated_durations, sess_surg_dict, weeks_sessions, waitlist, turn_around, allowed_overtime, solve_percentile, sim_start_date):
+def execute_schedule(simulated_durations, sess_surg_dict, weeks_sessions, waitlist, turn_around, allowed_overtime, sim_start_date):
     """
     Takes the realisation of simulated surgeries and executes the schedule. 
     Returns the utilisation, overtime, number of cancellations, time spent operating for each session and a list completed surgeries ids.
@@ -103,12 +103,8 @@ def execute_schedule(simulated_durations, sess_surg_dict, weeks_sessions, waitli
             if inconvenient:
                 # cancel surgery
                 number_cancelled_pref += 1
-            else:
-                # expected duration
-                duration = surgery.ed
-                if solve_percentile:
-                    # simulated duration
-                    duration = simulated_durations[surgery.n]
+            else: 
+                duration = simulated_durations[surgery.n]
                  # check if enough time left
                 if time_elapsed + surgery.ed + turn_around < session.sd + allowed_overtime:
                     #if not first surgery, add turn_around_time

@@ -34,7 +34,7 @@ turn_around = 15
 allowed_overtime = 30
 percentile_value = 50
 solve_percentiles = True # set to false if want to use the mean and no uncertainty
-chance_of_inconvenience_for_each_day_month_week = 0.083
+chance_of_inconvenience_for_each_day_month_week = 0.069
 obj_type = "t&p matrix"
 #set to true if you want to manually resolve each gurobi problem and ignore stored solutions
 solve_anyway = True
@@ -226,12 +226,10 @@ for iter in range(10):
                 #graph
                 create_session_graph(inconvenience_sol, session, db_name, num_sessions_to_plot)
 
-            if solve_percentiles:
-                # run simulation of surgery durations
-                simulated_durations = simulate_durations(new_sessions, waitlist, sess_sur_dict) 
+            simulated_durations = simulate_durations(new_sessions, waitlist, sess_sur_dict) 
 
             # execute the schedule
-            utilisation, overtime, num_cancelled_over, num_cancelled_pref, time_operating, completed_surgeries = execute_schedule(simulated_durations, sess_sur_dict, new_sessions, waitlist, turn_around, allowed_overtime, solve_percentiles, simulation_start_date)
+            utilisation, overtime, num_cancelled_over, num_cancelled_pref, time_operating, completed_surgeries = execute_schedule(simulated_durations, sess_sur_dict, new_sessions, waitlist, turn_around, allowed_overtime, simulation_start_date)
             # get number of surgeries cancelled for each reason
             total_cancelled_over = sum(num_cancelled_over)
             total_cancelled_pref = sum(num_cancelled_pref)
