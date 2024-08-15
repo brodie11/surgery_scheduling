@@ -169,6 +169,7 @@ def get_disruption_count_cv(all_swapped_surgery_ids):
         return discruption_count
 
 def get_operations_which_changed(sess_sur_dict1, sess_sur_dict2, new_surgeries):
+
   #create list of all swapped surgeries between weeks
   list_of_swapped_surgey_ids = []
   #loop through sessions
@@ -176,9 +177,6 @@ def get_operations_which_changed(sess_sur_dict1, sess_sur_dict2, new_surgeries):
 
       #loop through surgeries
       for surgery2 in surgeries2_array:
-          
-          if surgery2 == 14271:
-            print("yo")
 
           #if surgery is new arrival then can't have been disrupted so ignore
           if len(list(filter(lambda x: x.n == surgery2, new_surgeries))) > 0:
@@ -186,8 +184,8 @@ def get_operations_which_changed(sess_sur_dict1, sess_sur_dict2, new_surgeries):
           #if session new then any non-new surgeries must have been swapped so add to list
           if session2_id not in sess_sur_dict1:
               list_of_swapped_surgey_ids.append(surgery2)
-          elif surgery2 not in sess_sur_dict1[session2_id]:
           #if surgery in different session to what it was then must have been swapped so add to list
+          elif surgery2 not in sess_sur_dict1[session2_id]:
               list_of_swapped_surgey_ids.append(surgery2)
 
   return list_of_swapped_surgey_ids
@@ -288,12 +286,23 @@ def compute_metrics(waitlist, scheduled_sessions, week, ses_sur_dict, cancelled_
 class inconvenienceProb:
   # Copy and sort the surgeries and sessions, build the model, then solve the
   # model.
-  def __init__(self, iter, surgeries, sessions, turn_around, obj_type, is_disruption_considered, max_disruption_parameter, max_disruption_shift, time_lim=300, init_assign=None, perfect_information=False):
+  def __init__(self, iter, surgeries, sessions, turn_around, obj_type, is_disruption_considered, 
+               max_disruption_parameter, max_disruption_shift, time_lim=300, optimality_gap=1, init_assign=None, 
+               perfect_information=False, new_sessions=[]):
 
     self.iter = iter
 
     self.ops = deepcopy(surgeries)
     self.sess = deepcopy(sessions)
+    self.new_sess=deepcopy(new_sessions)
+    print("testing")
+    if init_assign == None:
+       self.old_ops = []
+    else:
+      self.old_ops = sum(list(init_assign.values()),[])#get all operations in initial assignment
+      #remove old ops which are no longer in schedule
+      self.new_op_names = map(lambda x: x.n, self.ops)
+      self.old_ops = [op for op in self.old_ops if op in self.new_op_names]
 
     print(f"self.sess {self.sess}")
 
@@ -317,6 +326,7 @@ class inconvenienceProb:
 
     self.ta = turn_around
     self.time_lim = time_lim
+    self.optimality_gap = optimality_gap
 
     self.obj_type = obj_type
 
@@ -361,9 +371,13 @@ class inconvenienceProb:
           else:
              continue
     
-    #limit the number of deviations from previous solution to self.mdp or less
+    #limit the number of deviations from previous solution to self.mdp or less #TODO test this!!
     if self.idc == True and self.init_assign is not None:
-      self.prob.addConstr(quicksum((1-self.x[o.n, s.n]) for s in self.sess for o in self.ops if s.n in self.init_assign.keys() and o.n in self.init_assign[s.n]) <= self.mdp)
+      old_sessions_disruption_sum = quicksum((1-self.x[o.n, s.n]) for s in self.sess for o in self.ops if s.n in self.init_assign.keys() and o.n in self.init_assign[s.n])
+      new_sessions_disruption_sum = quicksum((1-self.x[o.n, s.n]) for s in self.sess for o in self.ops if s.n in self.new_sess and o.n in self.old_ops)
+      # new_sessions_disruption_sum = quicksum((1-self.x[o, s.n]) for s in self.new_sess for o in self.old_ops)
+      self.prob.addConstr(old_sessions_disruption_sum + new_sessions_disruption_sum <= self.mdp)
+    #TODO find way to make sure that it's counted as a swap if an old surgery assigned to a new session also
 
     if self.obj_type != "t&p matrix":
       # Add the tardiness variables
@@ -439,6 +453,7 @@ class inconvenienceProb:
   # Solves the model and prints the solution.
   def solve_model(self):
     self.prob.Params.TimeLimit = self.time_lim
+    self.prob.Params.MIPGap = self.optimality_gap
     self.prob.optimize()
 
     if self.prob.status == 3:
@@ -451,13 +466,13 @@ class inconvenienceProb:
 
     for j, s in enumerate(self.sess):
       for i, o in enumerate(self.ops):
-        try:
-          if self.x[o.n, s.n].X > 0.99:
-            self.ses_sur_dict[s.n].append(o.n)
-        except:
-           print(f"self.x[o.n,s.n] {self.x[o.n,s.n]}")
-           print(f"self.iter{self.iter}")
-          # print('Scheduled:', i, o.n, int(o.ed), o.priority)
+        # try:
+        if self.x[o.n, s.n].X > 0.99:
+          self.ses_sur_dict[s.n].append(o.n)
+        # except:
+        #    print(f"self.x[o.n,s.n] {self.x[o.n,s.n]}")
+        #    print(f"self.iter{self.iter}")
+        #   # print('Scheduled:', i, o.n, int(o.ed), o.priority)
     print(self.prob.objVal)
 
 def is_surgery_inconvenient(session_days_since_start, sim_start_date, surgery):
