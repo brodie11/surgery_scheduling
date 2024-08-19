@@ -224,7 +224,7 @@ def print_detailed_ses_sur_dict(sess_sur_dict, waitlist, plenty_of_sess, turn_ar
 
         print(f"  combined surgery durations for session {session_id} is {combined_surgery_duration - turn_around}")
          
-def compute_metrics(waitlist, scheduled_sessions, week, completed_surgeries, num_cancelled_surgeries):
+def compute_metrics(waitlist, scheduled_sessions, week, completed_surgeries):
 
     total_tardiness = 0
     number_patients_tardy = 0
@@ -276,10 +276,8 @@ def compute_metrics(waitlist, scheduled_sessions, week, completed_surgeries, num
         sys.exit(0)
     
     num_sessions = len(scheduled_sessions)
-    # num_cancelled = len(cancelled_surgeries)
-    proportion_cancelled = num_cancelled_surgeries / (num_surs_scheduled + num_cancelled_surgeries)
 
-    return num_sessions, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions, num_cancelled_surgeries, proportion_cancelled
+    return num_sessions, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100
 
 # Class that builds and solves the MIP models for scheduling.
 class inconvenienceProb:
@@ -393,7 +391,8 @@ class inconvenienceProb:
           difference = s.sdt - o.dd
           if difference > 0:
              tardiness = difference
-          self.cost[o.n][s.n] = tardiness - o.priority/s.sdt
+          # self.cost[o.n][s.n] = tardiness - o.priority/s.sdt
+          self.cost[o.n][s.n] = tardiness + 10*(o.priority*s.sdt)
     
     # plot_cost(self.cost)
 
@@ -409,7 +408,7 @@ class inconvenienceProb:
           for s in self.sess
           ))
     elif self.obj_type == "t&p matrix":
-      self.prob.setObjective(quicksum( self.cost[o.n][s.n]*self.x[o.n, s.n]
+      self.prob.setObjective(quicksum(self.cost[o.n][s.n]*self.x[o.n, s.n]
           for o in self.ops
           for s in self.sess
           ))

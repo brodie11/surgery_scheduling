@@ -6,7 +6,7 @@ def lognormal_to_normal(y_mean, y_var):
     # Convert mean and variance of lognormal distribution to mean and standard deviation of normal distribution
     X_mean = np.log(y_mean / ((1 + y_var/y_mean**2)**0.5))
     X_var = np.log(1 + y_var/y_mean**2)
-
+    
     return X_mean, X_var
 
 def replace_ev_with_percentile(sched_surs, percentile):
@@ -20,6 +20,11 @@ def replace_ev_with_percentile(sched_surs, percentile):
 
     new_sched_surs = []
     for sched_sur in sched_surs:
+        # check if percentile already found
+        if hasattr(sched_sur, 'actual_mean'):
+            new_sched_surs.append(sched_sur)
+            continue
+
         #get ev and variance
         ed = sched_sur.ed
         dv = sched_sur.dv
@@ -95,30 +100,35 @@ def execute_schedule(simulated_durations, sess_surg_dict, weeks_sessions, waitli
         time_spent_operating = 0
         number_cancelled_over = 0
         number_cancelled_pref = 0
+        scheduled_finish_time = 0
 
         # loop through each surgery in session
         for surgery in session_surgeries:
+            scheduled_finish_time += surgery.ed
             # check if inconvenient
             inconvenient = is_surgery_inconvenient(session.sdt, sim_start_date, surgery) 
             if inconvenient:
                 # cancel surgery
                 number_cancelled_pref += 1
+                # can't start the next surgery until when it was scheduled
+                time_elapsed = max(time_elapsed, scheduled_finish_time)
             else: 
                 duration = simulated_durations[surgery.n]
                  # check if enough time left
                 if time_elapsed + surgery.ed + turn_around < session.sd + allowed_overtime:
-                    #if not first surgery, add turn_around_time
+                    # if not first surgery, add turn_around_time
                     if surgery.n != session_surgeries[0].n:
                         time_elapsed += turn_around
-                    #perform surgery
+                        time_spent_operating += turn_around
+                    # perform surgery
                     time_elapsed += duration
                     time_spent_operating += duration
                     completed_surgeries.append(surgery.n)
                 else:
-                    #if surgery will probably take more than allowed overtime then increment cancellation metrics accordingly and stop surgeries for day
-                    cancelled_surgery_index = session_surgeries.index(surgery)
-                    number_cancelled_over += (len(session_surgeries[cancelled_surgery_index:]))
-                    break
+                    # if surgery will probably take more than allowed overtime then increment cancellation metrics accordingly
+                    number_cancelled_over += 1
+                    # can't start the next surgery until when it was scheduled
+                    time_elapsed = max(time_elapsed, scheduled_finish_time)
 
         # calculate session metrics
         utilisation = time_spent_operating / session.sd

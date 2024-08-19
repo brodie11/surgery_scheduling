@@ -5,15 +5,17 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import pandas as pd
+import numpy as np
 
 
 import pickle
 
+
 # Perrie's path 
-# repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/brodie_perrie_code/src")
+repo_path = Path("/Users/perriemacdonald/Library/CloudStorage/OneDrive-TheUniversityofAuckland/University/ENGEN700/surgery_scheduling/brodie_perrie_code/src")
 
 # Brodie's path path 
-repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/brodie_perrie_code/src")
+# repo_path = Path("C:/Users/Grant Dye/Documents/Uni/Engsci/4th year/part4project/surgery_scheduling/brodie_perrie_code/src")
 
 sys.path.append(str(repo_path))
 from configs import OUTPUT_DB_DIR, DATA_FILE, OUTPUT_DB_DIR_TEST
@@ -35,7 +37,7 @@ specialty_id = 0
 facility = "A"
 time_lim_first_week = 200
 time_lim_other_weeks = 20
-optimality_gap = 0.01
+optimality_gap = 0.03
 print_verbose = False
 turn_around = 15
 allowed_overtime = 30
@@ -64,7 +66,7 @@ if testing == True: output_db_location_to_use = OUTPUT_DB_DIR_TEST
 #data to collect for simulations
 columns = ['iteration','objective type', 'disruptions?', 'perfect_information_bool', 'days_considered_tardy', 'week','num_sessions', 'total tardiness', 'number of patients tardy', 'average wait time (priority < 0.33)', 
            'average wait_time (0.33 < priority < 0.66)', 'average wait time 0.66 < priority',
-           'number of surgeries scheduled', 'num sessions', 'num surgeries cancelled', "cancelation proportion",
+           'total cancelled overtime', 'total cancelled inconvenient', 'total surgeries completed', 'average utilisation', 'average overtime', 'total time operating'
            ]
 metrics_df = pd.DataFrame(columns=columns)
 total_tardiness = number_patients_tardy = average_waittime_p33 = average_waittime_p66 = average_waittime_p100 = num_surs_scheduled = avg_session_utilisation = 0
@@ -91,8 +93,8 @@ surgical_sessions_master = surgical_sessions.loc[(surgical_sessions['specialty_i
 surgical_sessions_master['start_time'] = pd.to_datetime(surgical_sessions['start_time'])
 
 #whether there are disruption constraints for a given run
-is_disruption_considered = True
-solve_percentile = False
+is_disruption_considered = False
+solve_percentile = True
 
 percentile_value=50
 
@@ -115,11 +117,14 @@ weeks = (simulation_end_date - simulation_start_date).days // 7
 
 #set up desired number of runs
 num_runs = 1
-loop = False #set to true to run multiple times with different priority assignments for averaging purposes
+
+loop = True #set to true to run multiple times with different priority assignments for averaging purposes
 for iter in range(num_runs):
 
     #run both with and without perfect_info_bool
-    for perfect_info_bool in [True, False]:
+    # for perfect_info_bool in [True, False]: # not considering perfect info for my experiments
+    perfect_info_bool = False
+    for allowed_overtime in [0, 15, 30, 45, 60]:
 
         #list for keeping track of swaps/disruption
         all_swapped_surgery_ids = [[]]
@@ -169,7 +174,7 @@ for iter in range(num_runs):
                     new_surgeries = surgeries_to_arrive_partitioned.pop(0)
 
             if not new_sessions:
-                all_swapped_surgery_ids.append([]) #no ssurgeries swapped this week because no surgeries scheduled
+                all_swapped_surgery_ids.append([]) #no surgeries swapped this week because no surgeries scheduled
                 continue #continue if no new sessions this week
 
             #add new surgeries to waitlist
@@ -181,7 +186,7 @@ for iter in range(num_runs):
 
             #make string version of perfect_info_bool
             perfect_info_string = "False"
-            if perfect_info_bool == True: perfect_info_string = "True"
+            if perfect_info_bool == True: perfect_info_string = "True"  
 
             #make string version of is_disruption_considered
             is_disruption_considered_string = "False"
@@ -222,6 +227,8 @@ for iter in range(num_runs):
                     if solve_percentiles:
                         waitlist = replace_ev_with_percentile(waitlist, percentile_value)
                     for surgery in waitlist:
+                        if np.isnan(surgery.ed):
+                            print("stop here")
                         get_create_sur(session, surgery.n, surgery.ed, surgery.priority)
                     for sess in plenty_of_sess:
                         get_create_ses(session, sess.n, simulation_start_date + pd.Timedelta(days=sess.sdt), sess.tn, sess.sd)
@@ -281,35 +288,22 @@ for iter in range(num_runs):
 
             # execute the schedule
             utilisation, overtime, num_cancelled_over, num_cancelled_pref, time_operating, completed_surgeries = execute_schedule(simulated_durations, sess_sur_dict, new_sessions, waitlist, turn_around, allowed_overtime, simulation_start_date)
-            # get number of surgeries cancelled for each reason
+            
+            # summarise results
             total_cancelled_over = sum(num_cancelled_over)
             total_cancelled_pref = sum(num_cancelled_pref)
-            # # count how many surgeries were cancelled due to patient preference
-            # if perfect_info_bool == False:
-            #     #cancel the surgeries that were inconvenient before solution created (they will stay on waitlist)
-            #     for imperfect_sessions in new_sessions:
-            #         imperfect_sessions = imperfect_sessions.n
-            #         if imperfect_sessions == -1:
-            #             continue
-            #         sess_sched_obj = list(filter(lambda obj: obj.n == imperfect_sessions, all_sess))[0]
-            #         # get surgeries in session
-            #         surgeries_in_session = sess_sur_dict[imperfect_sessions]
-            #         for surgery in surgeries_in_session:
-            #             surgery_sched_obj = list(filter(lambda obj: obj.n == surgery, waitlist))[0]
-            #             # check if inconvenient
-            #             inconvenient = is_surgery_inconvenient(sess_sched_obj.sdt, simulation_start_date, surgery_sched_obj)
-            #             if inconvenient:
-            #                 # cancel surgery
-            #                 sess_sur_dict[imperfect_sessions].remove(surgery)
-            #                 cancelled_surgeries.append(surgery)
+            total_completed = len(completed_surgeries)
+            avg_utilisation = np.average(utilisation)
+            avg_overtime = np.average(overtime)
+            total_time_operating = sum(time_operating)
 
             #move first 2 weeks of schedule to scheduled if first week, otherwise move first 1 week to scheduled
             scheduled_sessions = new_sessions
 
             #compute important metrics (cancelled due to preferences)
-            metrics = compute_metrics(waitlist, scheduled_sessions, week, completed_surgeries, total_cancelled_pref)
-            num_sessions, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled, num_sessions, num_cancelled, proportion_cancelled = metrics
-            metrics_df.loc[len(metrics_df.index)] = [iter, obj_type, is_disruption_considered_string, perfect_info_string, days_considered_tardy, week, num_sessions, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, num_surs_scheduled,num_sessions,num_cancelled, proportion_cancelled]
+            metrics = compute_metrics(waitlist, scheduled_sessions, week, completed_surgeries)
+            num_sessions, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100 = metrics
+            metrics_df.loc[len(metrics_df.index)] = [iter, obj_type, is_disruption_considered_string, perfect_info_string, days_considered_tardy, week, num_sessions, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, total_cancelled_over, total_cancelled_pref, total_completed, avg_utilisation, avg_overtime, total_time_operating]
             metrics_df_file_name = "{0}_specialty_{1}_metrics_disruption{2}_mds_{3}_mdp_{4}.csv".format(obj_type.replace(" ", ""), str(specialty_id), is_disruption_considered_string, max_disruption_shift, max_disruption_parameter)
             metrics_df.to_csv(os.path.join(output_db_location_to_use, metrics_df_file_name))
             
@@ -357,7 +351,8 @@ for iter in range(num_runs):
 #TODO compare the two schedules
 columns_to_summarise=['num_sessions', 'total tardiness','number of patients tardy',	'average wait time (priority < 0.33)',	
                       'average wait_time (0.33 < priority < 0.66)',	'average wait time 0.66 < priority',	
-                      'number of surgeries scheduled',	'num surgeries cancelled',	'cancelation proportion']
+                      'total cancelled overtime', 'total cancelled inconvenient', 'total surgeries completed', 'average utilisation',
+                        'average overtime', 'total time operating']
 
 average_values = metrics_df.groupby('perfect_information_bool')[columns_to_summarise].mean().reset_index()
 average_values.to_csv(os.path.join(output_db_location_to_use,"average_values_" + suffix_for_csvs))

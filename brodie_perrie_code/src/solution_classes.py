@@ -133,7 +133,6 @@ def get_create_sur(db_ses, id_num, duration, priority):
   sur_obj = query.first()
 
   if sur_obj is None:
-
     sur_obj = Surgery(id=id_num, duration=int(duration), priority=priority)
     db_ses.add(sur_obj)
     db_ses.commit()
