@@ -167,7 +167,7 @@ def get_disruption_count_cv(all_swapped_surgery_ids):
         discruption_count = pd.DataFrame(list_of_dicts_for_df)
         return discruption_count
 
-def get_operations_which_changed(sess_sur_dict1, sess_sur_dict2, new_surgeries):
+def get_operations_which_changed(sess_sur_dict1, sess_sur_dict2, new_surgeries, recently_cancelled_surgeries):
 
   #create list of all swapped surgeries between weeks
   list_of_swapped_surgey_ids = []
@@ -179,6 +179,9 @@ def get_operations_which_changed(sess_sur_dict1, sess_sur_dict2, new_surgeries):
 
           #if surgery is new arrival then can't have been disrupted so ignore
           if len(list(filter(lambda x: x.n == surgery2, new_surgeries))) > 0:
+              continue
+          #don't count surgeries which were booked then cancelled as disruptions
+          if len(list(filter(lambda x: x.n == surgery2, recently_cancelled_surgeries))) > 0:
               continue
           #if session new then any non-new surgeries must have been swapped so add to list
           if session2_id not in sess_sur_dict1:
@@ -276,6 +279,7 @@ def compute_metrics(waitlist, scheduled_sessions, week, completed_surgeries):
         sys.exit(0)
     
     num_sessions = len(scheduled_sessions)
+    # num_cancelled = len(cancelled_surgeries)
 
     return num_sessions, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100
 
@@ -285,14 +289,19 @@ class inconvenienceProb:
   # model.
   def __init__(self, iter, surgeries, sessions, turn_around, obj_type, is_disruption_considered, 
                max_disruption_parameter, max_disruption_shift, time_lim=300, optimality_gap=1, init_assign=None, 
-               perfect_information=False, new_sessions=[]):
+               perfect_information=False, new_sessions=[], seed = 10):
 
+    self.seed = seed
     self.iter = iter
 
     self.ops = deepcopy(surgeries)
     self.sess = deepcopy(sessions)
+    self.sess_ids = list(map(lambda x: x.n, self.sess))
     self.new_sess=deepcopy(new_sessions)
-    print("testing")
+    
+    if 5701 in self.ops:
+       print("yo")
+
     if init_assign == None:
        self.old_ops = []
     else:
@@ -342,6 +351,8 @@ class inconvenienceProb:
     # Initialise the Gurobi model.
     self.prob = Model('Surgery Scheduling Problem')
 
+    self.prob.setParam("Seed", self.seed)
+
     # Add the x variables.
     self.x_inds = [(o.n, s.n) for o in self.ops
       for s in self.sess]
@@ -370,10 +381,8 @@ class inconvenienceProb:
     
     #limit the number of deviations from previous solution to self.mdp or less #TODO test this!!
     if self.idc == True and self.init_assign is not None:
-      old_sessions_disruption_sum = quicksum((1-self.x[o.n, s.n]) for s in self.sess for o in self.ops if s.n in self.init_assign.keys() and o.n in self.init_assign[s.n])
-      new_sessions_disruption_sum = quicksum((1-self.x[o.n, s.n]) for s in self.sess for o in self.ops if s.n in self.new_sess and o.n in self.old_ops)
-      # new_sessions_disruption_sum = quicksum((1-self.x[o, s.n]) for s in self.new_sess for o in self.old_ops)
-      self.prob.addConstr(old_sessions_disruption_sum + new_sessions_disruption_sum <= self.mdp)
+      disruption = quicksum((1-self.x[o, s]) for s in self.init_assign.keys() for o in self.init_assign[s] if s in self.sess_ids)
+      self.prob.addConstr(disruption <= self.mdp, name="max disruption")
     #TODO find way to make sure that it's counted as a swap if an old surgery assigned to a new session also
 
     if self.obj_type != "t&p matrix":
@@ -422,9 +431,12 @@ class inconvenienceProb:
     for j, s in enumerate(self.sess):
       if s.n != -1:
         # Surgery duration + turn around = session duration
+        # try:
         self.prob.addConstr(quicksum(self.x[o.n, s.n] * int(o.ed + self.ta)  #
           for o in self.ops) - self.ta <= s.rhs,
           "session_duration_%s" % j)
+        # except:
+        #    print("yo")
 
     if self.obj_type != "t&p matrix":
       #each surgery's tardiness is greater than their scheduled time - due date (and 0)
@@ -472,6 +484,21 @@ class inconvenienceProb:
         #    print(f"self.iter{self.iter}")
         #   # print('Scheduled:', i, o.n, int(o.ed), o.priority)
     print(self.prob.objVal)
+
+    if self.idc == True and self.init_assign is not None:
+      # Get the constraint by its name
+      constraint = self.prob.getConstrByName("max disruption")
+
+      # Extract the linear expression from the constraint
+      # Get the LHS expression of the constraint
+      lhs_expression = self.prob.getRow(constraint)
+
+      # Iterate over the terms in the LHS expression and print the variables and their values
+      print("Variables in the LHS of 'max disruption' constraint:")
+      for i in range(lhs_expression.size()):
+          var = lhs_expression.getVar(i)
+          if var.X == 0:  
+            print(f"Variable {var.VarName}: Value {var.X}")
 
 def is_surgery_inconvenient(session_days_since_start, sim_start_date, surgery):
     # Calculate the actual date of the session
