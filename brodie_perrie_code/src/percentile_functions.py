@@ -80,6 +80,7 @@ def execute_schedule(simulated_durations, sess_surg_dict, weeks_sessions, waitli
     number_cancelled_pref_array = []
     time_operating_array = []
     completed_surgeries = []
+    cancelled_surgeries = []
 
     for session in weeks_sessions:
         # get list of surgery objects in session
@@ -117,7 +118,9 @@ def execute_schedule(simulated_durations, sess_surg_dict, weeks_sessions, waitli
                 else:
                     #if surgery will probably take more than allowed overtime then increment cancellation metrics accordingly and stop surgeries for day
                     cancelled_surgery_index = session_surgeries.index(surgery)
-                    number_cancelled_over += (len(session_surgeries[cancelled_surgery_index:]))
+                    cancelled_surgeries = session_surgeries[cancelled_surgery_index:]
+                    number_cancelled_over += (len(cancelled_surgeries))
+
                     break
 
         # calculate session metrics
@@ -132,4 +135,4 @@ def execute_schedule(simulated_durations, sess_surg_dict, weeks_sessions, waitli
         time_operating_array.append(time_spent_operating)
         
 
-    return utilisation_array, overtime_array, number_cancelled_over_array, number_cancelled_pref_array, time_operating_array, completed_surgeries
+    return utilisation_array, overtime_array, number_cancelled_over_array, number_cancelled_pref_array, time_operating_array, completed_surgeries, cancelled_surgeries
