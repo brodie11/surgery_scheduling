@@ -12,9 +12,12 @@ import math
 # Class for surgeries used while scheduling.
 class schedSurgery:
     def __init__(self, name, expected_duration, duration_variance,
-      arrive_date, due_date, cdi=0.069, seed=10):
-
-      self.rng = np.random.default_rng(seed)
+      arrive_date, due_date, cdi=0.069, global_rng=None):
+      
+      if global_rng == None:
+        self.rng = np.random.default_rng()
+      else:
+        self.rng = global_rng
 
       self.n = int(name)
       self.ed = expected_duration
