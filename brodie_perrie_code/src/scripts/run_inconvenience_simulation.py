@@ -67,8 +67,11 @@ period_start_year = 2015 #can go 2015-3 earliest
 period_start_month = 3
 period_end_year = 2016 #can go 2016-12 latest
 period_end_month = 3
+extra_end_year = 2016 #can go 2016-12 latest
+extra_end_month = 12
 simulation_start_date = pd.Timestamp(year=period_start_year, month=period_start_month, day=1) 
 simulation_end_date = pd.Timestamp(year=period_end_year, month=period_end_month, day=1) 
+extra_sessions_end_date = pd.Timestamp(year=period_end_year, month=period_end_month, day=1) 
 #make testing = true if running a test or something else where you don't mind the databases being 
 #deleted after. Make testing = false otherwise
 output_db_location_to_use = OUTPUT_DB_DIR
@@ -93,12 +96,20 @@ Session = sessionmaker(bind=engine)
 with Session() as session:
     surgeries, surgical_sessions, specialties = prepare_data(session,
         simulation_start_date, simulation_end_date)
+    
+len_surgeries = len(surgeries)
+len_surgical_sessions = len(surgical_sessions)
 
 # Filter surgeries and sessions to the specialty and facility of interest.
 surgeries_master = surgeries.loc[(surgeries['specialty_id'] == specialty_id) &
     (surgeries['facility'] == facility) & (surgeries['planned'] == 1)]
 surgical_sessions_master = surgical_sessions.loc[(surgical_sessions['specialty_id'] == specialty_id) &
-    (surgical_sessions['facility'] == facility) & surgeries['planned'] == 1]
+    (surgical_sessions['facility'] == facility) & surgical_sessions['planned'] == 1]
+
+len_surgeries_master = len(surgeries_master)
+len_surgical_sessions_master = len(surgical_sessions_master)
+
+print([len_surgeries, len_surgeries_master, len_surgical_sessions, len_surgical_sessions_master])
 
 # Convert start_time to datetime if it's not already in datetime format
 surgical_sessions_master['start_time'] = pd.to_datetime(surgical_sessions['start_time'])
@@ -266,12 +277,13 @@ for iter in range(num_runs):
                 if last_week_solution != None:     
 
                     # for Brodie debugging
-                    if week >= 3:
+                    if week >= 11:
                         print("yo")
 
                     list_of_swapped_surgey_ids = get_operations_which_changed(last_week_solution, sess_sur_dict, new_surgeries, recently_cancelled_surgeries)
                     all_swapped_surgery_ids.append(list_of_swapped_surgey_ids)
 
+                    #print the differences for surgery session pair identified as 'swapped'
                     for list_of_swapped_surgery_id in list_of_swapped_surgey_ids:
                         print(f"Considering surgery {list_of_swapped_surgery_id}")
                         for ses_1_id, surgeries_1 in last_week_solution.items():
