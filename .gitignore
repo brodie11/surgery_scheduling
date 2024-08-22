@@ -1,0 +1,7 @@
+.venv/
+perrie_env/
+myenv1/
+my_venv/
+toms_code/venv/
+*.db
+*.pdf
