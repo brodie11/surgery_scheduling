@@ -6,20 +6,25 @@ from solution_classes import (get_sessions, get_surgeries,
   get_solution_assignments)
 import math
 
-rng = Generator(PCG64(891011))
+# rng = Generator(PCG64(891011))
 
 
 # Class for surgeries used while scheduling.
 class schedSurgery:
     def __init__(self, name, expected_duration, duration_variance,
-      arrive_date, due_date, cdi=0.069):
+      arrive_date, due_date, cdi=0.069, global_rng=None):
+      
+      if global_rng == None:
+        self.rng = np.random.default_rng()
+      else:
+        self.rng = global_rng
 
       self.n = int(name)
       self.ed = expected_duration
       self.dv = duration_variance
       self.ad = arrive_date
       self.dd = due_date
-      self.priority = rng.uniform()
+      self.priority = self.rng.random()
       self.actual_mean = expected_duration
 
       #properties to do with inc
@@ -31,20 +36,20 @@ class schedSurgery:
     def get_inconvenient_day(self):
        #returns 1 if monday inconvenient, 2 if tuesday inconvenient,... 5 if Friday inconvenient.
        #returns 0 if no days are inconvenient
-       random_number = rng.uniform()
+       random_number = self.rng.uniform()
        if random_number <= self.chance_of_day_week_month_preference:
-          return math.floor(rng.uniform()*5) + 1
+          return math.floor(self.rng.uniform()*5) + 1
        else:
           return None
        
     def get_inconvenient_weeks(self):
        #returns an array of length 4 representing the 4 weeks of the year which are inconvenient
        #if no weeks are inconvenient, returns an empty array
-       random_number = rng.uniform()
+       random_number = self.rng.uniform()
        if random_number <= self.chance_of_day_week_month_preference:
             inconvenient_weeks = []
             while len(inconvenient_weeks) < 4:
-                inconvenient_week = math.floor(rng.uniform()*52) + 1
+                inconvenient_week = math.floor(self.rng.uniform()*52) + 1
                 if inconvenient_week not in inconvenient_weeks:
                     inconvenient_weeks.append(inconvenient_week)
             return inconvenient_weeks
@@ -54,9 +59,9 @@ class schedSurgery:
     def get_inconvenient_month(self):
        #returns 1 if Jan inconvenient, 2 if Feb inconvenient,... 12 if Dec inconvenient.
        #returns 0 if no months are inconvenient
-       random_number = rng.uniform()
+       random_number = self.rng.uniform()
        if random_number <= self.chance_of_day_week_month_preference:
-          return math.floor(rng.uniform()*12) + 1
+          return math.floor(self.rng.uniform()*12) + 1
        else:
           return None
        

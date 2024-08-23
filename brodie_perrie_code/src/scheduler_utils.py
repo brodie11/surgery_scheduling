@@ -71,9 +71,13 @@ def prepare_data(session, start_date, end_date):
 
 # Takes the surgeries from the database and creates the objects used in
 # scheduling.
-def create_schedule_partition_surs(partition_surs, simulation_start_date, simulation_end_date, days_considered_tardy, cdi):
+def create_schedule_partition_surs(partition_surs, simulation_start_date, simulation_end_date, days_considered_tardy, cdi, seed=10):
 
   surs = []
+
+  rng = np.random.default_rng()
+
+  global_rng = np.random.default_rng(seed=seed)
 
   for part_sur in partition_surs.itertuples():
 
@@ -83,7 +87,7 @@ def create_schedule_partition_surs(partition_surs, simulation_start_date, simula
     #create surgery objects
     surs.append(schedSurgery(part_sur.Index, part_sur.predicted_duration,
       part_sur.predicted_variance, arrival_datetime_integer,
-      arrival_datetime_integer + days_considered_tardy, cdi=cdi))
+      arrival_datetime_integer + days_considered_tardy, cdi=cdi, global_rng=global_rng))
     # get_create_sur(session, part_sur.Index, part_sur.predicted_duration,
     #   surs[-1].priority)
   
@@ -113,7 +117,7 @@ def create_schedule_partition_sess(partition_sess, simulation_start_date, simula
   all_sess = []
   for part_ses in partition_sess.itertuples():
 
-    start_time_integer = (part_ses.start_time - simulation_start_date).days
+    start_time_integer = (part_ses.start_time - simulation_start_date).days + 1
   
     all_sess.append(schedSession(part_ses.Index, start_time_integer,
       part_ses.duration, part_ses.theatre_number))
