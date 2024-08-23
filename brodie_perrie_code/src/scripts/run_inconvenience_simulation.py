@@ -96,20 +96,12 @@ Session = sessionmaker(bind=engine)
 with Session() as session:
     surgeries, surgical_sessions, specialties = prepare_data(session,
         simulation_start_date, simulation_end_date)
-    
-len_surgeries = len(surgeries)
-len_surgical_sessions = len(surgical_sessions)
 
 # Filter surgeries and sessions to the specialty and facility of interest.
 surgeries_master = surgeries.loc[(surgeries['specialty_id'] == specialty_id) &
     (surgeries['facility'] == facility) & (surgeries['planned'] == 1)]
 surgical_sessions_master = surgical_sessions.loc[(surgical_sessions['specialty_id'] == specialty_id) &
     (surgical_sessions['facility'] == facility) & surgical_sessions['planned'] == 1]
-
-len_surgeries_master = len(surgeries_master)
-len_surgical_sessions_master = len(surgical_sessions_master)
-
-print([len_surgeries, len_surgeries_master, len_surgical_sessions, len_surgical_sessions_master])
 
 # Convert start_time to datetime if it's not already in datetime format
 surgical_sessions_master['start_time'] = pd.to_datetime(surgical_sessions['start_time'])
@@ -276,25 +268,21 @@ for iter in range(num_runs):
                 #collect list of all surgeries that were swpped between weeks
                 if last_week_solution != None:     
 
-                    # for Brodie debugging
-                    if week >= 11:
-                        print("yo")
-
                     list_of_swapped_surgey_ids = get_operations_which_changed(last_week_solution, sess_sur_dict, new_surgeries, recently_cancelled_surgeries)
                     all_swapped_surgery_ids.append(list_of_swapped_surgey_ids)
 
-                    #print the differences for surgery session pair identified as 'swapped'
-                    for list_of_swapped_surgery_id in list_of_swapped_surgey_ids:
-                        print(f"Considering surgery {list_of_swapped_surgery_id}")
-                        for ses_1_id, surgeries_1 in last_week_solution.items():
-                            for surgery_1 in surgeries_1:
-                                if surgery_1 == list_of_swapped_surgery_id:
-                                    print(f"surgery{surgery_1} in session{ses_1_id} in oldschedule and ")
-                        for ses_2_id, surgeries_2 in sess_sur_dict.items():
-                            for surgery_2 in surgeries_2:
-                                if surgery_2 == list_of_swapped_surgery_id:
-                                    print(f"surgery{surgery_2} in session{ses_2_id} in newschedule and ")
-                        print("------------------------------------")
+                    # #print the differences for surgery session pair identified as 'swapped' #TODO Brodie was using for debugging. Can delete if not already deleted by week 7
+                    # for list_of_swapped_surgery_id in list_of_swapped_surgey_ids:
+                    #     print(f"Considering surgery {list_of_swapped_surgery_id}")
+                    #     for ses_1_id, surgeries_1 in last_week_solution.items():
+                    #         for surgery_1 in surgeries_1:
+                    #             if surgery_1 == list_of_swapped_surgery_id:
+                    #                 print(f"surgery{surgery_1} in session{ses_1_id} in oldschedule and ")
+                    #     for ses_2_id, surgeries_2 in sess_sur_dict.items():
+                    #         for surgery_2 in surgeries_2:
+                    #             if surgery_2 == list_of_swapped_surgery_id:
+                    #                 print(f"surgery{surgery_2} in session{ses_2_id} in newschedule and ")
+                    #     print("------------------------------------")
 
                 #TODO check whether length of waitlist and length of ses_sur dict equal each week
                 # if not there may be a problem
@@ -304,7 +292,7 @@ for iter in range(num_runs):
                 last_week_solution = sess_sur_dict
 
                 #limit number of sessions to plot to 40
-                num_sessions_to_plot = len(plenty_of_sess) + 10
+                num_sessions_to_plot = len(plenty_of_sess)
 
                 #graph
                 if create_graphs: create_session_graph(inconvenience_sol, session, db_name, num_sessions_to_plot)
