@@ -75,6 +75,10 @@ def create_schedule_partition_surs(partition_surs, simulation_start_date, simula
 
   surs = []
 
+  rng = np.random.default_rng()
+
+  global_rng = np.random.default_rng(seed=seed)
+
   for part_sur in partition_surs.itertuples():
 
     #turn dates into integer repressenting dayss since simulation starts
@@ -83,7 +87,7 @@ def create_schedule_partition_surs(partition_surs, simulation_start_date, simula
     #create surgery objects
     surs.append(schedSurgery(part_sur.Index, part_sur.predicted_duration,
       part_sur.predicted_variance, arrival_datetime_integer,
-      arrival_datetime_integer + days_considered_tardy, cdi=cdi, seed=seed))
+      arrival_datetime_integer + days_considered_tardy, cdi=cdi, global_rng=global_rng))
     # get_create_sur(session, part_sur.Index, part_sur.predicted_duration,
     #   surs[-1].priority)
   

@@ -181,7 +181,7 @@ def get_operations_which_changed(sess_sur_dict1, sess_sur_dict2, new_surgeries, 
           if len(list(filter(lambda x: x.n == surgery2, new_surgeries))) > 0:
               continue
           #don't count surgeries which were booked then cancelled as disruptions
-          if len(list(filter(lambda x: x.n == surgery2, recently_cancelled_surgeries))) > 0:
+          if surgery2 in recently_cancelled_surgeries:
               continue
           #if session new then any non-new surgeries must have been swapped so add to list
           if session2_id not in sess_sur_dict1:
@@ -195,7 +195,7 @@ def get_operations_which_changed(sess_sur_dict1, sess_sur_dict2, new_surgeries, 
 def get_plenty_of_sess(all_sess, waitlist):
   duration_of_all_surgeries = sum([surgery.ed for surgery in waitlist])
   avg_duration_of_all_sessions = sum([session.sdt for session in all_sess]) / len(all_sess)
-  number_sessions_needed = int(duration_of_all_surgeries//avg_duration_of_all_sessions + 5) #plus 5 for safety
+  number_sessions_needed = round(int(duration_of_all_surgeries//avg_duration_of_all_sessions)*1.5) #plus 20% for safety
   return all_sess[0:number_sessions_needed]
 
 def print_detailed_ses_sur_dict(sess_sur_dict, waitlist, plenty_of_sess, turn_around):
@@ -298,25 +298,14 @@ class inconvenienceProb:
     self.sess = deepcopy(sessions)
     self.sess_ids = list(map(lambda x: x.n, self.sess))
     self.new_sess=deepcopy(new_sessions)
-    
-    if 5701 in self.ops:
-       print("yo")
-
-    if init_assign == None:
-       self.old_ops = []
-    else:
-      self.old_ops = sum(list(init_assign.values()),[])#get all operations in initial assignment
-      #remove old ops which are no longer in schedule
-      self.new_op_names = map(lambda x: x.n, self.ops)
-      self.old_ops = [op for op in self.old_ops if op in self.new_op_names]
 
     print(f"self.sess {self.sess}")
 
     #add in dummy session to make problem feasible:
-    last_sess = max(sessions, key=attrgetter('sdt'))
-    print(f"last_sess.sdt {last_sess.sdt}")
-    extra_sess_start = last_sess.sdt + 28
-    self.sess.append(schedSession(-1, extra_sess_start, 999999, 0))
+    # last_sess = max(sessions, key=attrgetter('sdt'))
+    # print(f"last_sess.sdt {last_sess.sdt}")
+    # extra_sess_start = last_sess.sdt + 28
+    # self.sess.append(schedSession(-1, extra_sess_start, 999999, 0))
 
     self.priority_ops = sorted(self.ops, key=lambda x: x.priority, reverse=True)
     self.ordered_sess = sorted(self.sess, key=lambda x: x.sdt)
@@ -324,7 +313,7 @@ class inconvenienceProb:
     self.priority_inds = [self.ops.index(o) for o in self.priority_ops]
     self.ordered_inds = [self.sess.index(s) for s in self.ordered_sess]
 
-    self.actual_sess = self.ordered_sess[:-1]
+    # self.actual_sess = self.ordered_sess[:-1]
 
     self.init_assign = init_assign
 
@@ -381,8 +370,11 @@ class inconvenienceProb:
     
     #limit the number of deviations from previous solution to self.mdp or less #TODO test this!!
     if self.idc == True and self.init_assign is not None:
-      disruption = quicksum((1-self.x[o, s]) for s in self.init_assign.keys() for o in self.init_assign[s] if s in self.sess_ids)
-      self.prob.addConstr(disruption <= self.mdp, name="max disruption")
+      try:
+        disruption = quicksum((1-self.x[o, s]) for s in self.init_assign.keys() for o in self.init_assign[s] if s in self.sess_ids)
+        self.prob.addConstr(disruption <= self.mdp, name="max disruption")
+      except:
+         print("yo")
     #TODO find way to make sure that it's counted as a swap if an old surgery assigned to a new session also
 
     if self.obj_type != "t&p matrix":
@@ -485,20 +477,20 @@ class inconvenienceProb:
         #   # print('Scheduled:', i, o.n, int(o.ed), o.priority)
     print(self.prob.objVal)
 
-    if self.idc == True and self.init_assign is not None:
-      # Get the constraint by its name
-      constraint = self.prob.getConstrByName("max disruption")
+    # if self.idc == True and self.init_assign is not None: #TODO Brodie was using for debugging. Can delete if not already deleted by week 7
+    #   # Get the constraint by its name
+    #   constraint = self.prob.getConstrByName("max disruption")
 
-      # Extract the linear expression from the constraint
-      # Get the LHS expression of the constraint
-      lhs_expression = self.prob.getRow(constraint)
+    #   # Extract the linear expression from the constraint
+    #   # Get the LHS expression of the constraint
+    #   lhs_expression = self.prob.getRow(constraint)
 
-      # Iterate over the terms in the LHS expression and print the variables and their values
-      print("Variables in the LHS of 'max disruption' constraint:")
-      for i in range(lhs_expression.size()):
-          var = lhs_expression.getVar(i)
-          if var.X == 0:  
-            print(f"Variable {var.VarName}: Value {var.X}")
+    #   # Iterate over the terms in the LHS expression and print the variables and their values
+    #   print("Variables in the LHS of 'max disruption' constraint:")
+    #   for i in range(lhs_expression.size()):
+    #       var = lhs_expression.getVar(i)
+    #       if var.X == 0:  
+    #         print(f"Variable {var.VarName}: Value {var.X}")
 
 def is_surgery_inconvenient(session_days_since_start, sim_start_date, surgery):
     # Calculate the actual date of the session
