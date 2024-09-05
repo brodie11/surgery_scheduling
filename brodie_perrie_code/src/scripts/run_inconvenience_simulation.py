@@ -108,7 +108,7 @@ surgical_sessions_master['start_time'] = pd.to_datetime(surgical_sessions['start
 
 #these will store disruption metrics
 disruption_count_df_csv = None
-priority_and_warning_times__csv = None
+priority_and_warning_times_csv = None
 
 #do you want graphs each week?
 create_graphs = True
@@ -197,14 +197,15 @@ for iter in range(num_runs):
 
             #SUFFIXs for experiments
             #use this suffix in the name of any csv output from an experiment over 15 iterations
-            suffix_for_csvs = f"s_{specialty_id}_f_{facility}_sd_{simulation_start_date.date()}_ed_{simulation_end_date.date()}_"
-            suffix_for_csvs += f"pi_{'T' if perfect_info_string == 'True' else 'F'}_idc_{'T' if is_disruption_considered else 'F'}_mdp_{max_disruption_parameter}_"
-            suffix_for_csvs += f"mds_{max_disruption_shift}_ipc_{'T' if solve_percentiles else 'F'}_pv_{percentile_value}_ao_{allowed_overtime}_dct_{days_considered_tardy}_"
-            suffix_for_csvs += f"tl_{time_lim_other_weeks}_og_{optimality_gap}"
+            suffix = f"s_{specialty_id}_f_{facility}_sd_{simulation_start_date.date()}_ed_{simulation_end_date.date()}_"
+            suffix += f"pi_{'T' if perfect_info_string == 'True' else 'F'}_idc_{'T' if is_disruption_considered else 'F'}_mdp_{max_disruption_parameter}_"
+            suffix += f"mds_{max_disruption_shift}_ipc_{'T' if solve_percentiles else 'F'}_pv_{percentile_value}_ao_{allowed_overtime}_dct_{days_considered_tardy}_"
+            suffix += f"tl_{time_lim_other_weeks}_og_{optimality_gap}"
             #use this suffix for any one itertion run
-            suffix_for_iter = f"i_{iter}_" + suffix_for_csvs
+            suffix_for_iter = f"i_{iter}_" + suffix
             #use this suffix for storing solutions in databases for a given week
             suffix_for_week = f"w_{week}_" + suffix_for_iter
+            suffix_for_csvs = suffix + ".csv"
 
             #set up session to store specific week
             # db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_pi_{5}_dct_{6}_disrup_{7}_dp_{8}_ds_{9}_l_{10}.db'.format(specialty_id,
@@ -329,24 +330,24 @@ for iter in range(num_runs):
 
             recently_cancelled_surgeries = cancelled_surgeries
         #CALCULATE DISCRUPTION PARAMATERS - Brodie's don't delete
-
+        
         #get disruption count
-        disruption_count_df_current = get_disruption_count_cv(all_swapped_surgery_ids)
-        disruption_count_df_current['iter'] = iter
-        disruption_count_df_current['perfect_information_bool'] = perfect_info_bool
+        disruption_count_df_current_iter = get_disruption_count_cv(all_swapped_surgery_ids)
+        disruption_count_df_current_iter['iter'] = iter
+        disruption_count_df_current_iter['perfect_information_bool'] = perfect_info_bool
 
         #get disrupton count and priority and warning time dfs
-        disruption_count_df_current_iter = get_disruption_count_cv(all_swapped_surgery_ids)
         priority_and_warning_times_df_current_iter = get_priority_and_warning_time_for_all_surgeries_df(all_swapped_surgery_ids, disruption_count_df_current_iter , actual_schedule)
 
         #store concatonations of these for csv purposes
         if iter == 1 and perfect_info_bool == True:
             disruption_count_df_csv = disruption_count_df_current_iter
-            priority_and_warning_times__csv = priority_and_warning_times_df_current_iter
+            priority_and_warning_times_csv = priority_and_warning_times_df_current_iter
         else:
             disruption_count_df_csv = pd.concat([disruption_count_df_csv, disruption_count_df_current_iter], axis=0)
             priority_and_warning_times_df_csv = pd.concat([priority_and_warning_times_df_csv, priority_and_warning_times_df_current_iter], axis = 0)
-        
+        disruption_count_df_csv.to_csv("diruption_count_"+suffix_for_csvs)
+        priority_and_warning_times_csv.to_csv("priority_and_warning_times_"+suffix_for_csvs)
 
     # #save variable
     # with open('all_swapped_surgery_ids.pkl', 'wb') as file:

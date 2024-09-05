@@ -94,7 +94,7 @@ def get_priority_and_warning_time_for_all_surgeries_df(all_swapped_surgery_ids, 
 
     priority_and_warning_time_for_all_surgeries_df = pd.DataFrame(columns=['session_id', 'count', 'priority', 'warning time'], data={})
 
-    row = 0
+    row = 1
 
     master_dict = actual_schedule.get_dict()
     sessions = actual_schedule.get_sessions()
@@ -102,7 +102,11 @@ def get_priority_and_warning_time_for_all_surgeries_df(all_swapped_surgery_ids, 
         session = [sess for sess in sessions if sess.n == session_id]
 
         for surgery in surgeries:
-            count = disruption_count_df[disruption_count_df['surgery_id'] == surgery.n].values[0]
+            filtered_df = disruption_count_df[disruption_count_df['surgery_id'] == surgery.n]
+            if len(filtered_df) == 0:
+               count = 0
+            else:
+               count = filtered_df.values[0]
             priority = surgery.priority
             weeks_since_last_disruption = 0                                    
             for weeks_cancellations in reversed(all_swapped_surgery_ids):
@@ -110,7 +114,6 @@ def get_priority_and_warning_time_for_all_surgeries_df(all_swapped_surgery_ids, 
                     weeks_since_last_disruption += 1
                 else:
                     break
-
         row += 1
         priority_and_warning_time_for_all_surgeries_df.loc[len(priority_and_warning_time_for_all_surgeries_df)] = [session_id, count, priority, weeks_since_last_disruption]
 
