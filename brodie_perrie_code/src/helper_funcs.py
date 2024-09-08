@@ -92,7 +92,7 @@ import pandas as pd
 #get priority and amount of time patient knew about session for before being locked in
 def get_priority_and_warning_time_for_all_surgeries_df(all_swapped_surgery_ids, disruption_count_df , actual_schedule, perfect_info=False, iter=1):
 
-    priority_and_warning_time_for_all_surgeries_df = pd.DataFrame(columns=['session_id', 'count', 'priority', 'warning time'], data={})
+    priority_and_warning_time_for_all_surgeries_df = pd.DataFrame(columns=['session_id', 'count', 'priority', 'warning time', 'time in system'], data={})
 
     all_surgeries = actual_schedule.get_all_surgeries()
     for surgery in all_surgeries:
@@ -103,13 +103,23 @@ def get_priority_and_warning_time_for_all_surgeries_df(all_swapped_surgery_ids, 
           else:
             count = filtered_df.iloc[0]['disruption count']
           priority = surgery.priority
-          weeks_since_last_disruption = 0                                    
-          for weeks_cancellations in reversed(all_swapped_surgery_ids):
+          weeks_since_last_disruption = 0
+          arrival_week = 0 if surgery.ad <= 0 else surgery.ad//7
+          departure_week = 0 if surgery.ad <= 0 else surgery.ld//7
+          relevent_swapped_surgery_ids = all_swapped_surgery_ids[arrival_week:departure_week]                                
+          for weeks_cancellations in reversed(relevent_swapped_surgery_ids):
               if surgery.n not in weeks_cancellations:
                   weeks_since_last_disruption += 1
               else:
                   break
-          priority_and_warning_time_for_all_surgeries_df.loc[len(priority_and_warning_time_for_all_surgeries_df)] = [surgery.n, count, priority, weeks_since_last_disruption]
+          time_in_system = None
+          if departure_week == arrival_week:
+             percent_spent_knowing = 1
+             time_in_system = 1
+          else:
+            time_in_system = departure_week-arrival_week
+            percent_spent_knowing = weeks_since_last_disruption/(time_in_system)
+          priority_and_warning_time_for_all_surgeries_df.loc[len(priority_and_warning_time_for_all_surgeries_df)] = [surgery.n, count, priority, percent_spent_knowing, time_in_system]
 
     return priority_and_warning_time_for_all_surgeries_df
 
@@ -317,7 +327,7 @@ class inconvenienceProb:
     self.priority_inds = [self.ops.index(o) for o in self.priority_ops]
     self.ordered_inds = [self.sess.index(s) for s in self.ordered_sess]
 
-    # self.actual_sess = self.ordered_sess[:-1]
+    self.actual_sess = self.ordered_sess #used to exclude -1 session. Doesn't anymore
 
     self.init_assign = init_assign
 
