@@ -26,6 +26,7 @@ class schedSurgery:
       self.dd = due_date
       self.priority = self.rng.random()
       self.actual_mean = expected_duration
+      self.ld = None #leaving date
 
       #properties to do with inc
       self.chance_of_day_week_month_preference = cdi #should result in CDI (cancellation due to inconvenince) rate of 2.5%

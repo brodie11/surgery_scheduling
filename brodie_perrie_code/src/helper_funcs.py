@@ -90,29 +90,36 @@ import pandas as pd
 #     plt.show()
 
 #get priority and amount of time patient knew about session for before being locked in
-def get_priority_and_warning_time_for_all_surgeries_df(all_swapped_surgery_ids, disruption_count_df , actual_schedule):
+def get_priority_and_warning_time_for_all_surgeries_df(all_swapped_surgery_ids, disruption_count_df , actual_schedule, perfect_info=False, iter=1):
 
-    priority_and_warning_time_for_all_surgeries_df = pd.DataFrame(columns=['session_id', 'count', 'priority', 'warning time'], data={})
+    priority_and_warning_time_for_all_surgeries_df = pd.DataFrame(columns=['session_id', 'count', 'priority', 'warning time', 'time in system'], data={})
 
-    row = 0
-
-    master_dict = actual_schedule.get_dict()
-    sessions = actual_schedule.get_sessions()
-    for session_id, surgeries in master_dict.items():
-        session = [sess for sess in sessions if sess.n == session_id]
-
-        for surgery in surgeries:
-            count = disruption_count_df[disruption_count_df['surgery_id'] == surgery.n].values[0]
-            priority = surgery.priority
-            weeks_since_last_disruption = 0                                    
-            for weeks_cancellations in reversed(all_swapped_surgery_ids):
-                if surgery.n in weeks_cancellations:
-                    weeks_since_last_disruption += 1
-                else:
-                    break
-
-        row += 1
-        priority_and_warning_time_for_all_surgeries_df.loc[len(priority_and_warning_time_for_all_surgeries_df)] = [session_id, count, priority, weeks_since_last_disruption]
+    all_surgeries = actual_schedule.get_all_surgeries()
+    for surgery in all_surgeries:
+          filtered_df = disruption_count_df[disruption_count_df['surgery_id'] == surgery.n]
+          filtered_df = filtered_df[filtered_df['iter'] == iter]
+          if len(filtered_df) == 0:
+            count = 0
+          else:
+            count = filtered_df.iloc[0]['disruption count']
+          priority = surgery.priority
+          weeks_since_last_disruption = 0
+          arrival_week = 0 if surgery.ad <= 0 else surgery.ad//7
+          departure_week = 0 if surgery.ad <= 0 else surgery.ld//7
+          relevent_swapped_surgery_ids = all_swapped_surgery_ids[arrival_week:departure_week]                                
+          for weeks_cancellations in reversed(relevent_swapped_surgery_ids):
+              if surgery.n not in weeks_cancellations:
+                  weeks_since_last_disruption += 1
+              else:
+                  break
+          time_in_system = None
+          if departure_week == arrival_week:
+             percent_spent_knowing = 1
+             time_in_system = 1
+          else:
+            time_in_system = departure_week-arrival_week
+            percent_spent_knowing = weeks_since_last_disruption/(time_in_system)
+          priority_and_warning_time_for_all_surgeries_df.loc[len(priority_and_warning_time_for_all_surgeries_df)] = [surgery.n, count, priority, percent_spent_knowing, time_in_system]
 
     return priority_and_warning_time_for_all_surgeries_df
 
@@ -136,6 +143,12 @@ class BetterScheduleObj():
   def get_surgeries(self, sessionID):
      return self.dict[sessionID]
   
+  def get_all_surgeries(self):
+     all_surgeries = []
+     for surgeries in self.dict.values():
+        all_surgeries = all_surgeries + surgeries
+     return all_surgeries
+  
   def fill_better_schedule(self, sess_sur_dict, sessionObjs, surgery_objs):
      for session_id, surgery_IDs in sess_sur_dict.items():
         self.sessionIds.append(session_id)
@@ -153,6 +166,7 @@ def get_disruption_count_cv(all_swapped_surgery_ids):
         #COUNT DISRUPTIONS (make df)
         #flatten
         flattened_all_disruptions = sum(all_swapped_surgery_ids, [])
+        print(len(flattened_all_disruptions))
         #list of dictionaries
         list_of_dicts_for_df = []
         #get unique surgery ids
@@ -162,10 +176,10 @@ def get_disruption_count_cv(all_swapped_surgery_ids):
             dict = {}
             count = flattened_all_disruptions.count(unique_surgery)
             dict['surgery_id'] = unique_surgery
-            dict['discruption count'] = count
+            dict['disruption count'] = count
             list_of_dicts_for_df.append(dict)
-        discruption_count = pd.DataFrame(list_of_dicts_for_df)
-        return discruption_count
+        disruption_count = pd.DataFrame(list_of_dicts_for_df)
+        return disruption_count
 
 def get_operations_which_changed(sess_sur_dict1, sess_sur_dict2, new_surgeries, recently_cancelled_surgeries):
 
@@ -313,7 +327,7 @@ class inconvenienceProb:
     self.priority_inds = [self.ops.index(o) for o in self.priority_ops]
     self.ordered_inds = [self.sess.index(s) for s in self.ordered_sess]
 
-    # self.actual_sess = self.ordered_sess[:-1]
+    self.actual_sess = self.ordered_sess #used to exclude -1 session. Doesn't anymore
 
     self.init_assign = init_assign
 
@@ -370,11 +384,8 @@ class inconvenienceProb:
     
     #limit the number of deviations from previous solution to self.mdp or less #TODO test this!!
     if self.idc == True and self.init_assign is not None:
-      try:
         disruption = quicksum((1-self.x[o, s]) for s in self.init_assign.keys() for o in self.init_assign[s] if s in self.sess_ids)
         self.prob.addConstr(disruption <= self.mdp, name="max disruption")
-      except:
-         print("yo")
     #TODO find way to make sure that it's counted as a swap if an old surgery assigned to a new session also
 
     if self.obj_type != "t&p matrix":
@@ -388,13 +399,8 @@ class inconvenienceProb:
     for o in self.ops:
       self.cost[o.n] = {}
       for s in self.sess:
-          tardiness = 0
-          difference = s.sdt - o.dd
-          if difference > 0:
-             tardiness = difference
-          # self.cost[o.n][s.n] = tardiness - o.priority/s.sdt
-          self.cost[o.n][s.n] = tardiness + 10*(o.priority*s.sdt)
-    
+          tardiness = max([s.sdt - o.dd, 0])
+          self.cost[o.n][s.n] = 365*tardiness + (o.priority*s.sdt) #TODO make so 365 is replaced with days_in_simulation_period    
     # plot_cost(self.cost)
 
     if self.obj_type == "t":

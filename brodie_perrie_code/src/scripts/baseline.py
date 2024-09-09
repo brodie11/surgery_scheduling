@@ -36,11 +36,11 @@ from percentile_functions import (replace_ev_with_percentile, simulate_durations
 
 #BRODIE SETTINGS: (maybe make a copy and comment out mine so it's easy for us to flick between)
 #whether there are disruption constraints for a given run
-is_disruption_considered = True
+is_disruption_considered = False
 solve_percentiles = False
 percentile_value=50
-max_disruption_parameter = 28
-max_disruption_shift = 28
+max_disruption_parameter = -1
+max_disruption_shift = -1
 testing = False
 is_overtime_considered = False
 is_perfect_info_considered = False
@@ -319,13 +319,8 @@ for iter in range(num_runs):
                 for scheduled_session in scheduled_sessions:
                     #add to master schedule
                     surgery_ids = sess_sur_dict[scheduled_session.n]
-                    completed_surgeries_this_session = [surgery for surgery in waitlist if surgery.n in surgery_ids]
-                    actual_schedule.fill_session(scheduled_session, completed_surgeries_this_session)
-                    #set leaving dates of locked in surgeries
-                    for completed_surgery_this_session in completed_surgeries_this_session:
-                        completed_surgery_this_session.ld = scheduled_session.sdt
+                    actual_schedule.fill_session(scheduled_session, [surgery for surgery in waitlist if surgery.n in surgery_ids])
                 
-                #update sessions and waitlists
                 all_sess = [session for session in all_sess if session not in scheduled_sessions]
                 waitlist = [surgery for surgery in waitlist if surgery.n not in completed_surgeries]
 
@@ -338,7 +333,7 @@ for iter in range(num_runs):
 
             #get disrupton count and priority and warning time dfs
             priority_and_warning_times_df_current_iter = get_priority_and_warning_time_for_all_surgeries_df(all_swapped_surgery_ids, disruption_count_df_current_iter, actual_schedule, perfect_info=perfect_info_bool, iter=iter)
-            priority_and_warning_times_df_current_iter["iter"] = iter
+            priority_and_warning_times_df_current_iter[iter] = iter
 
             #store concatonations of these for csv purposes
             if iter == 1 and perfect_info_bool == True:
@@ -367,5 +362,6 @@ for iter in range(num_runs):
 
     if loop == False:
         break
+
 
 print(suffix)
