@@ -2,7 +2,7 @@ from copy import deepcopy
 import numpy as np
 from numpy.random import Generator, PCG64
 from gurobipy import Model, GRB, quicksum
-from .solution_classes import (get_sessions, get_surgeries,
+from solution_classes import (get_sessions, get_surgeries,
   get_solution_assignments)
 
 rng = Generator(PCG64(891011))
@@ -19,7 +19,6 @@ class schedSurgery:
       self.ad = arrive_date
       self.dd = due_date
       self.priority = rng.uniform()
-      self.actual_mean = expected_duration
 
     def __repr__(self):
       return '<Surgery(n={0})>'.format(self.n)

@@ -1,0 +1,2 @@
+,iteration,objective type,disruptions?,perfect_information_bool,days_considered_tardy,week,num_sessions,total tardiness,number of patients tardy,average wait time (priority < 0.33),average wait_time (0.33 < priority < 0.66),average wait time 0.66 < priority,number of surgeries scheduled,num sessions,num surgeries cancelled,cancelation proportion
+0,0,t&p matrix,False,True,91,1,11,1090,45,34.082352941176474,21.870588235294118,30.870588235294118,85,11,0,0.0

@@ -4,9 +4,9 @@ import pandas as pd
 
 from datetime import timedelta
 
-from .data_classes import (Surgery, SurgicalSession, Specialty)
-from .scheduler_classes import (schedSurgery, schedSession)
-from .solution_classes import get_create_sur, get_create_ses
+from data_classes import (Surgery, SurgicalSession, Specialty)
+from scheduler_classes import (schedSurgery, schedSession)
+from solution_classes import get_create_sur, get_create_ses
 
 
 # Reads in the surgeries, sessions, and specialties from the database, and
@@ -15,7 +15,7 @@ def read_database(session, start_date, end_date):
 
   query = (session.query(Surgery)
     .filter(Surgery.planned == 1)
-    .filter(Surgery.arrival_datetime < start_date)
+    .filter(Surgery.arrival_datetime < end_date)
     .filter(Surgery.complete_date_datetime >= start_date)
     .order_by(Surgery.id))
   surgeries = pd.read_sql_query(query.statement, session.bind, index_col='id')
@@ -23,7 +23,7 @@ def read_database(session, start_date, end_date):
   query = (session.query(Surgery.id.label('surgeries_id'),
     Specialty.id.label('specialties_id'), Specialty.name)
     .filter(Surgery.planned == 1)
-    .filter(Surgery.arrival_datetime < start_date)
+    .filter(Surgery.arrival_datetime < end_date)
     .filter(Surgery.complete_date_datetime >= start_date)
     .join(Specialty)
     .order_by(Surgery.id))

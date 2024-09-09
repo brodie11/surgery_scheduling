@@ -1,0 +1,2 @@
+,perfect_information_bool,num_sessions,total tardiness,number of patients tardy,average wait time (priority < 0.33),average wait_time (0.33 < priority < 0.66),average wait time 0.66 < priority,total cancelled overtime,total cancelled inconvenient,total surgeries completed,average utilisation,average overtime,total time operating
+0,False,1.4864864864864864,628.6908108108108,7.887927927927928,0.9754869149445046,25.747599954494163,53.754909662000934,0.35243243243243244,0.3473873873873874,10.843963963963963,0.9255622175334396,5.172762430517014,647.090248499412
