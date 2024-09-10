@@ -301,7 +301,7 @@ def compute_metrics(waitlist, scheduled_sessions, week, completed_surgeries):
 class inconvenienceProb:
   # Copy and sort the surgeries and sessions, build the model, then solve the
   # model.
-  def __init__(self, iter, surgeries, sessions, turn_around, obj_type, is_disruption_considered, 
+  def __init__(self, sim_start_date, iter, surgeries, sessions, turn_around, obj_type, is_disruption_considered, 
                max_disruption_parameter, max_disruption_shift, time_lim=300, optimality_gap=1, init_assign=None, 
                perfect_information=False, new_sessions=[], seed = 10):
 
@@ -312,6 +312,8 @@ class inconvenienceProb:
     self.sess = deepcopy(sessions)
     self.sess_ids = list(map(lambda x: x.n, self.sess))
     self.new_sess=deepcopy(new_sessions)
+
+    self.sim_start_date = sim_start_date
 
     print(f"self.sess {self.sess}")
 
@@ -451,12 +453,13 @@ class inconvenienceProb:
         #check if constraints needed
         if day_banned != None or weeks_banned != None or month_banned != None:
           for s in self.actual_sess:
-            session_time = s.sdt
-            day_inconvenient = session_time % 7 == day_banned
-            week_inconvenient = math.floor(session_time / 7) + 1 in weeks_banned
-            month_inconvenient = math.floor(session_time / 30.41) + 1 == month_banned
-            if day_inconvenient or week_inconvenient or month_inconvenient:
-              self.prob.addConstr(self.x[o.n, s.n] == 0)
+            if is_surgery_inconvenient(s.sdt, self.sim_start_date, o):
+            # session_time = s.sdt
+            # day_inconvenient = session_time % 7 == day_banned
+            # week_inconvenient = math.floor(session_time / 7) + 1 in weeks_banned
+            # month_inconvenient = math.floor(session_time / 30.41) + 1 == month_banned
+            # if day_inconvenient or week_inconvenient or month_inconvenient:
+              self.prob.addConstr(self.x[o.n, s.n] == 0) 
         
   # Solves the model and prints the solution.
   def solve_model(self):
