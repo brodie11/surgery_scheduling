@@ -55,7 +55,7 @@ time_lim_other_weeks = 20
 optimality_gap = 0.05
 print_verbose = False
 turn_around = 15
-allowed_overtime = 30
+allowed_overtime = 0
 
 chance_of_inconvenience_for_each_day_month_week = 0.069
 obj_type = "t&p matrix"
