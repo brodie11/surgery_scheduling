@@ -209,18 +209,19 @@ for iter in range(num_runs):
                         perfect_info_string = "True"  
 
                     #make string version of is_disruption_considered
-                    is_disruption_considered_string = "False"
-                    if is_disruption_considered: 
-                        is_disruption_considered_string = "True"
+                    is_disruption_considered_string = "True" if is_disruption_considered else "False"
+
+                    start_date_formatted = str(simulation_start_date.date()).replace("-","")[4:]
+                    end_date_formatted = str(simulation_end_date.date()).replace("-","")[4:]
 
                     #SUFFIXs for experiments
                     #use this suffix in the name of any csv output from an experiment over 15 iterations
-                    suffix = f"s_{specialty_id}_f_{facility}_sd_{simulation_start_date.date()}_ed_{simulation_end_date.date()}_"
-                    suffix += f"ipic_{'T' if is_perfect_info_considered == 'True' else 'F'}_pi_{'T' if perfect_info_string == 'True' else 'F'}_idc_{'T' if is_disruption_considered else 'F'}_mdp_{max_disruption_parameter}_"
-                    suffix += f"mds_{max_disruption_shift}_ipc_{'T' if solve_percentiles else 'F'}_pv_{percentile_value}_ioc_{'T' if is_overtime_considered else 'F'}_ao_{allowed_overtime}_dct_{days_considered_tardy}_"
+                    suffix = f"s_{specialty_id}_f_{facility}_sd_{start_date_formatted}_ed_{end_date_formatted}_"
+                    suffix += f"ipic_{'T' if is_perfect_info_considered else 'F'}_idce_{'T' if is_disruption_considered_this_experiment else 'F'}_mdp_{max_disruption_parameter}_"
+                    suffix += f"mds_{max_disruption_shift}_ipc_{'T' if solve_percentiles else 'F'}_pv_{percentile_value}_ioc_{'T' if is_overtime_considered else 'F'}_dct_{days_considered_tardy}_"
                     suffix += f"tl_{time_lim_other_weeks}_og_{str(optimality_gap).split('.')[1]}"
                     #use this suffix for any one itertion run
-                    suffix_for_iter = f"i_{iter}_" + suffix
+                    suffix_for_iter = f"i_{iter}_pi_{'T' if perfect_info_string == 'True' else 'F'}_pc_{percentile_value}_ao_{allowed_overtime}_idc_{is_disruption_considered_string[0]}_" + suffix
                     #use this suffix for storing solutions in databases for a given week
                     suffix_for_week = f"w_{week}_" + suffix_for_iter
                     suffix_for_csvs = suffix + ".csv"
