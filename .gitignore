@@ -5,3 +5,5 @@ my_venv/
 toms_code/venv/
 *.db
 *.pdf
+*.csv
+*.pyc

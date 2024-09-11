@@ -36,11 +36,11 @@ from percentile_functions import (replace_ev_with_percentile, simulate_durations
 
 #BRODIE SETTINGS: (maybe make a copy and comment out mine so it's easy for us to flick between)
 #whether there are disruption constraints for a given run
-is_disruption_considered_this_experiment = False
+is_disruption_considered_this_experiment = True
 solve_percentiles = False
 percentile_value=50
-max_disruption_parameter = -1
-max_disruption_shift = -1
+max_disruption_parameter = 28
+max_disruption_shift = 10000
 testing = False
 is_overtime_considered = False
 is_perfect_info_considered = False
