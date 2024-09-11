@@ -465,6 +465,7 @@ class inconvenienceProb:
   def solve_model(self):
     self.prob.Params.TimeLimit = self.time_lim
     self.prob.Params.MIPGap = self.optimality_gap
+    # self.prob.Params.NodeFileStart = 0.5
     self.prob.optimize()
 
     if self.prob.status == 3:
