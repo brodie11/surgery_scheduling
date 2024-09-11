@@ -193,8 +193,8 @@ for iter in range(num_runs):
                     #make string version of is_disruption_considered
                     is_disruption_considered_string = "True" if is_disruption_considered else False
 
-                    start_date_formatted = str(simulation_start_date.date()).replace("-","")[4:-1]
-                    end_date_formatted = str(simulation_end_date.date()).replace("-","")[4:-1]
+                    start_date_formatted = str(simulation_start_date.date()).replace("-","")[4:]
+                    end_date_formatted = str(simulation_end_date.date()).replace("-","")[4:]
 
                     #SUFFIXs for experiments
                     #use this suffix in the name of any csv output from an experiment over 15 iterations
