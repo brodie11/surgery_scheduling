@@ -36,14 +36,18 @@ from percentile_functions import (replace_ev_with_percentile, simulate_durations
 
 #BRODIE SETTINGS: (maybe make a copy and comment out mine so it's easy for us to flick between)
 #whether there are disruption constraints for a given run
-is_disruption_considered = True
+is_disruption_considered_this_experiment = False
 solve_percentiles = False
 percentile_value=50
-max_disruption_parameter = 28
-max_disruption_shift = 28
+max_disruption_parameter = -1
+max_disruption_shift = -1
 testing = False
 is_overtime_considered = False
-is_perfect_info_considered = False
+is_perfect_info_considered = True
+period_start_year = 2015 #can go 2015-3 earliest
+period_start_month = 3
+period_end_year = 2016 #can go 2016-12 latest
+period_end_month = 3
 
 #PERRIE SETTINGS: 
 #whether there are disruption constraints for a given run
@@ -76,10 +80,7 @@ solve_anyway = False
 months_considered_tardy = 3
 days_considered_tardy = round(months_considered_tardy*(365/12)) #try 2 months for next disruption comparison run
 #pick start and end periods for simulation
-period_start_year = 2015 #can go 2015-3 earliest
-period_start_month = 3
-period_end_year = 2016 #can go 2016-12 latest
-period_end_month = 3
+
 simulation_start_date = pd.Timestamp(year=period_start_year, month=period_start_month, day=1) 
 simulation_end_date = pd.Timestamp(year=period_end_year, month=period_end_month, day=1)  
 #make testing = true if running a test or something else where you don't mind the databases being 
@@ -135,6 +136,10 @@ for iter in range(num_runs):
         #OVERTIME LOOP
         overtimes_considered = [0, 15, 30, 45, 60] if is_overtime_considered else [30]
         for allowed_overtime in overtimes_considered:
+
+            #DISRUPTION LOOP
+            is_disruption_considered_options = [True, False] if is_disruption_considered_this_experiment else [False]
+            for is_disruption_considered in is_disruption_considered_options:
 
             # PERCENTILES LOOP
             percentiles_considered = [20, 30, 40, 45, 50, 55, 60, 70] if solve_percentiles else [default_percentile_value]
@@ -197,25 +202,25 @@ for iter in range(num_runs):
                     
                     #CREATE SCHEDULES
 
-                    #make string version of perfect_info_bool
-                    perfect_info_string = "False"
-                    if perfect_info_bool == True: perfect_info_string = "True"  
+                #make string version of perfect_info_bool
+                perfect_info_string = "False"
+                if perfect_info_bool == True: perfect_info_string = "True"  
 
-                    #make string version of is_disruption_considered
-                    is_disruption_considered_string = "False"
-                    if is_disruption_considered == True: is_disruption_considered_string = "True"
+                #make string version of is_disruption_considered
+                is_disruption_considered_string = "False"
+                if is_disruption_considered == True: is_disruption_considered_string = "True"
 
-                    #SUFFIXs for experiments
-                    #use this suffix in the name of any csv output from an experiment over 15 iterations
-                    suffix = f"s_{specialty_id}_f_{facility}_sd_{simulation_start_date.date()}_ed_{simulation_end_date.date()}_"
-                    suffix += f"ipic_{'T' if is_perfect_info_considered == 'True' else 'F'}_pi_{'T' if perfect_info_string == 'True' else 'F'}_idc_{'T' if is_disruption_considered else 'F'}_mdp_{max_disruption_parameter}_"
-                    suffix += f"mds_{max_disruption_shift}_ipc_{'T' if solve_percentiles else 'F'}_pv_{percentile_value}_ioc_{'T' if is_overtime_considered else 'F'}_ao_{allowed_overtime}_dct_{days_considered_tardy}_"
-                    suffix += f"tl_{time_lim_other_weeks}_og_{str(optimality_gap).split('.')[1]}"
-                    #use this suffix for any one itertion run
-                    suffix_for_iter = f"i_{iter}_" + suffix
-                    #use this suffix for storing solutions in databases for a given week
-                    suffix_for_week = f"w_{week}_" + suffix_for_iter
-                    suffix_for_csvs = suffix + ".csv"
+                #SUFFIXs for experiments
+                #use this suffix in the name of any csv output from an experiment over 15 iterations
+                suffix = f"s_{specialty_id}_f_{facility}_sd_{simulation_start_date.date()}_ed_{simulation_end_date.date()}_"
+                suffix += f"ipic_{'T' if is_perfect_info_considered == 'True' else 'F'}_pi_{'T' if perfect_info_string == 'True' else 'F'}_idc_{'T' if is_disruption_considered else 'F'}_mdp_{max_disruption_parameter}_"
+                suffix += f"mds_{max_disruption_shift}_ipc_{'T' if solve_percentiles else 'F'}_pv_{percentile_value}_ioc_{'T' if is_overtime_considered else 'F'}_ao_{allowed_overtime}_dct_{days_considered_tardy}_"
+                suffix += f"tl_{time_lim_other_weeks}_og_{str(optimality_gap).split('.')[1]}"
+                #use this suffix for any one itertion run
+                suffix_for_iter = f"i_{iter}_" + suffix
+                #use this suffix for storing solutions in databases for a given week
+                suffix_for_week = f"w_{week}_" + suffix_for_iter
+                suffix_for_csvs = suffix + ".csv"
 
                     #set up session to store specific week
                     # db_name = 'specialty_{0}_start_{1}_end_{2}_week_{3}_prob_type_{4}_pi_{5}_dct_{6}_disrup_{7}_dp_{8}_ds_{9}_l_{10}.db'.format(specialty_id,
@@ -246,38 +251,38 @@ for iter in range(num_runs):
                             for sess in plenty_of_sess:
                                 get_create_ses(session, sess.n, simulation_start_date + pd.Timedelta(days=sess.sdt), sess.tn, sess.sd)
 
-                            #otherwise, solve it  
-                            #this is the class that solves the linear program
-                            #perfect_info_schedule = inconvenienceProb(waitlist, plenty_of_sess, turn_around, obj_type=obj_type, perfect_information=True, time_lim=30)
-                            if week == 1:
-                                print(f"iter{iter}")
-                                schedule = inconvenienceProb(iter, waitlist, all_sess, turn_around, obj_type, 
+                        #otherwise, solve it  
+                        #this is the class that solves the linear program
+                        #perfect_info_schedule = inconvenienceProb(waitlist, plenty_of_sess, turn_around, obj_type=obj_type, perfect_information=True, time_lim=30)
+                        if week == 1:
+                            print(f"iter{iter}")
+                            schedule = inconvenienceProb(iter, waitlist, all_sess, turn_around, obj_type, 
+                                                        is_disruption_considered, max_disruption_parameter, 
+                                                        max_disruption_shift, init_assign = week_1_solution, 
+                                                        perfect_information=perfect_info_bool, time_lim=time_lim_first_week,
+                                                        optimality_gap=optimality_gap, seed=seed) #TODO change to MIPGap rather than timelim
+                            week_1_solution = schedule.ses_sur_dict
+                        else:
+                            schedule = inconvenienceProb(iter, waitlist, all_sess, turn_around, obj_type, 
                                                             is_disruption_considered, max_disruption_parameter, 
-                                                            max_disruption_shift, init_assign = week_1_solution, 
-                                                            perfect_information=perfect_info_bool, time_lim=time_lim_first_week,
-                                                            optimality_gap=optimality_gap, seed=seed) #TODO change to MIPGap rather than timelim
-                                week_1_solution = schedule.ses_sur_dict
-                            else:
-                                schedule = inconvenienceProb(iter, waitlist, all_sess, turn_around, obj_type, 
-                                                                is_disruption_considered, max_disruption_parameter, 
-                                                                max_disruption_shift, init_assign = last_week_solution, 
-                                                                perfect_information=perfect_info_bool, 
-                                                                time_lim=time_lim_other_weeks, new_sessions=new_sessions, 
-                                                                optimality_gap=optimality_gap,seed=seed)
+                                                            max_disruption_shift, init_assign = last_week_solution, 
+                                                            perfect_information=perfect_info_bool, 
+                                                            time_lim=time_lim_other_weeks, new_sessions=new_sessions, 
+                                                            optimality_gap=optimality_gap,seed=seed)
 
                             #store solution in fudged way so don't have to rewrite Tom's code
                             inconvenience_sol = get_create_solution(session, 10,
                             10, 10, 0)
 
-                            #update database
-                            create_update_solution_assignments(session, inconvenience_sol.id,
-                            schedule.ses_sur_dict)
-                            
-                        # else:
-                        sess_sur_dict = get_ses_sur_dict(session, inconvenience_sol.id)
-        
-                        #collect list of all surgeries that were swpped between weeks
-                        if last_week_solution != None:     
+                        #update database
+                        create_update_solution_assignments(session, inconvenience_sol.id,
+                        schedule.ses_sur_dict)
+                        
+                    # else:
+                    sess_sur_dict = get_ses_sur_dict(session, inconvenience_sol.id)
+    
+                    #collect list of all surgeries that were swpped between weeks
+                    if last_week_solution != None:     
 
                             list_of_swapped_surgey_ids = get_operations_which_changed(last_week_solution, sess_sur_dict, new_surgeries, recently_cancelled_surgeries)
                             all_swapped_surgery_ids.append(list_of_swapped_surgey_ids)
@@ -344,12 +349,12 @@ for iter in range(num_runs):
                     all_sess = [session for session in all_sess if session not in scheduled_sessions]
                     waitlist = [surgery for surgery in waitlist if surgery.n not in completed_surgeries]
 
-                    recently_cancelled_surgeries = cancelled_surgeries
-                #CALCULATE DISCRUPTION PARAMATERS - Brodie's don't delete
-                
-                #get disruption count
-                disruption_count_df_current_iter = get_disruption_count_cv(all_swapped_surgery_ids)
-                disruption_count_df_current_iter['iter'] = iter
+                recently_cancelled_surgeries = cancelled_surgeries
+            #CALCULATE DISCRUPTION PARAMATERS - Brodie's don't delete
+            
+            #get disruption count
+            disruption_count_df_current_iter = get_disruption_count_cv(all_swapped_surgery_ids)
+            disruption_count_df_current_iter['iter'] = iter
 
                 #get disrupton count and priority and warning time dfs
                 priority_and_warning_times_df_current_iter = get_priority_and_warning_time_for_all_surgeries_df(all_swapped_surgery_ids, disruption_count_df_current_iter, actual_schedule, perfect_info=perfect_info_bool, iter=iter)

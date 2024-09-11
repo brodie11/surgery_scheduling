@@ -1,3 +1,0 @@
-,perfect_information_bool,total tardiness,number of patients tardy,average wait time (priority < 0.33),average wait_time (0.33 < priority < 0.66),average wait time 0.66 < priority,number of surgeries scheduled,num surgeries cancelled,cancelation proportion
-0,False,29.039583333333333,1.7479166666666666,30.664139101796685,20.890616436230207,10.064854908718681,35.7125,1.5916666666666666,0.04375745818049756
-1,True,23.09375,0.9520833333333333,28.534402371962265,16.055750572816045,7.217374647825233,37.50625,0.0,0.0
