@@ -120,7 +120,7 @@ for iter in range(num_runs):
     #use same patients for both perfect and imperfect info
     surgeries_initial_waitlist, surgeries_to_arrive_partitioned_master = create_schedule_partition_surs(surgeries_master, 
                                 simulation_start_date, simulation_end_date, days_considered_tardy, 
-                                chance_of_inconvenience_for_each_day_month_week,seed=seed)
+                                chance_of_inconvenience_for_each_day_month_week,global_rng=global_rng)
     all_sess_master, sessions_to_arrive_partitioned_master = create_schedule_partition_sess(surgical_sessions_master, 
                                 simulation_start_date, simulation_end_date)
 
