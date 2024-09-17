@@ -38,11 +38,11 @@ max_disruption_parameter = 14
 max_disruption_shift = 14
 testing = False
 is_overtime_considered = False
-is_perfect_info_considered = True
+is_perfect_info_considered = False
 period_start_year = 2015 #can go 2015-3 earliest
 period_start_month = 3
-period_end_year = 2016 #can go 2016-12 latest
-period_end_month = 3
+period_end_year = 2015 #can go 2016-12 latest
+period_end_month = 9
 
 suffix_for_csvs = ""
 
@@ -109,7 +109,7 @@ create_graphs = True
 weeks = (simulation_end_date - simulation_start_date).days // 7
 
 #set up desired number of runs
-num_runs = 15
+num_runs = 2
 
 #set seed
 global_rng = np.random.default_rng(seed=seed)
@@ -120,7 +120,7 @@ for iter in range(num_runs):
     #use same patients for both perfect and imperfect info
     surgeries_initial_waitlist, surgeries_to_arrive_partitioned_master = create_schedule_partition_surs(surgeries_master, 
                                 simulation_start_date, simulation_end_date, days_considered_tardy, 
-                                chance_of_inconvenience_for_each_day_month_week,seed=seed)
+                                chance_of_inconvenience_for_each_day_month_week,global_rng=global_rng)
     all_sess_master, sessions_to_arrive_partitioned_master = create_schedule_partition_sess(surgical_sessions_master, 
                                 simulation_start_date, simulation_end_date)
 

@@ -71,13 +71,9 @@ def prepare_data(session, start_date, end_date):
 
 # Takes the surgeries from the database and creates the objects used in
 # scheduling.
-def create_schedule_partition_surs(partition_surs, simulation_start_date, simulation_end_date, days_considered_tardy, cdi, seed=10):
+def create_schedule_partition_surs(partition_surs, simulation_start_date, simulation_end_date, days_considered_tardy, cdi, global_rng):
 
   surs = []
-
-  rng = np.random.default_rng()
-
-  global_rng = np.random.default_rng(seed=seed)
 
   for part_sur in partition_surs.itertuples():
 
