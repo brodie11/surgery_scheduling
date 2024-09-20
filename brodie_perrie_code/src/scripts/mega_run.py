@@ -25,7 +25,7 @@ from solution_classes import get_create_sur, get_create_ses
 from helper_funcs import (inconvenienceProb, BetterScheduleObj, compute_metrics, print_detailed_ses_sur_dict,is_surgery_inconvenient, 
                           get_plenty_of_sess, get_operations_which_changed, get_disruption_count_cv, get_priority_and_warning_time_for_all_surgeries_df)
 from classes import (schedSurgery, schedSession)
-from percentile_functions import (replace_ev_with_percentile, simulate_durations, execute_schedule, simulate_durations_2)
+from percentile_functions import (replace_ev_with_percentile, simulate_durations, execute_schedule)
 
 #SETTINGS
 seed = 10
@@ -51,8 +51,8 @@ settings_info = {
 settings_disruption_1 = {
     'idce': True,
     'sp': False,
-    'mdp': 14,
-    'mds': 14,
+    'mdp': 28,
+    'mds': 28,
     'ioc': False,
     'ipc': False
 }
@@ -60,15 +60,17 @@ settings_disruption_1 = {
 settings_disruption_2 = {
     'idce': True,
     'sp': False,
-    'mdp': 7,
-    'mds': 28,
+    'mdp': 28,
+    'mds': 1000,
     'ioc': False,
     'ipc': False
 }
 
-settings_dicts = [settings_baseline, settings_info, settings_disruption_1]
+settings_dicts = [settings_baseline, settings_info, settings_disruption_1, settings_disruption_2]
 
 for settings_dict in settings_dicts:
+
+
 
     #SETTINGS: 
     is_disruption_considered_this_experiment = settings_dict['idce']
@@ -80,7 +82,6 @@ for settings_dict in settings_dicts:
 
     testing = False
     default_percentile_value=50
-    allowed_overtime_default = 0
     period_start_year = 2015 #can go 2015-3 earliest
     period_start_month = 3
     period_end_year = 2016 #can go 2016-12 latest
@@ -96,6 +97,7 @@ for settings_dict in settings_dicts:
     optimality_gap = 0.05
     print_verbose = False
     turn_around = 15
+    allowed_overtime = 30
 
     chance_of_inconvenience_for_each_day_month_week = 0.069
     obj_type = "t&p matrix"
@@ -112,79 +114,62 @@ for settings_dict in settings_dicts:
     #deleted after. Make testing = false otherwise
     output_db_location_to_use = OUTPUT_DB_DIR_TEST if testing else OUTPUT_DB_DIR 
 
-#data to collect for simulations
-columns = ['iteration','objective type', 'disruptions?', 'perfect_information_bool', 'days_considered_tardy', 'week','num_sessions','num sessions overtime', 'allowed overtime', 'percentile', 'total tardiness', 'number of patients tardy', 'average wait time (priority < 0.33)', 
-           'average wait_time (0.33 < priority < 0.66)', 'average wait time 0.66 < priority',
-           'total cancelled overtime', 'total cancelled inconvenient', 'total surgeries completed', 'average utilisation', 'average overtime', 'total time operating'
-           ]
-metrics_df = pd.DataFrame(columns=columns)
-total_tardiness = number_patients_tardy = average_waittime_p33 = average_waittime_p66 = average_waittime_p100 = num_surs_scheduled = avg_session_utilisation = 0
+    #data to collect for simulations
+    columns = ['iteration','objective type', 'disruptions?', 'perfect_information_bool', 'days_considered_tardy', 'week','num_sessions', 'total tardiness', 'number of patients tardy', 'average wait time (priority < 0.33)', 
+            'average wait_time (0.33 < priority < 0.66)', 'average wait time 0.66 < priority',
+            'total cancelled overtime', 'total cancelled inconvenient', 'total surgeries completed', 'average utilisation', 'average overtime', 'total time operating'
+            ]
+    metrics_df = pd.DataFrame(columns=columns)
+    total_tardiness = number_patients_tardy = average_waittime_p33 = average_waittime_p66 = average_waittime_p100 = num_surs_scheduled = avg_session_utilisation = 0
 
-#create session for reacing in data like Tom did
-engine = create_engine('sqlite:///' + DATA_FILE)
-Session = sessionmaker(bind=engine)
+    #create session for reacing in data like Tom did
+    engine = create_engine('sqlite:///' + DATA_FILE)
+    Session = sessionmaker(bind=engine)
 
-# Get all sessions after start date and all surgeries that haven't left by start_date and arrive before end_date
-# I modified tom's prepare data function so this works
-with Session() as session:
-    surgeries, surgical_sessions, specialties = prepare_data(session,
-        simulation_start_date, simulation_end_date)
+    # Get all sessions after start date and all surgeries that haven't left by start_date and arrive before end_date
+    # I modified tom's prepare data function so this works
+    with Session() as session:
+        surgeries, surgical_sessions, specialties = prepare_data(session,
+            simulation_start_date, simulation_end_date)
 
-# Filter surgeries and sessions to the specialty and facility of interest.
-surgeries_master = surgeries.loc[(surgeries['specialty_id'] == specialty_id) &
-    (surgeries['facility'] == facility) & (surgeries['planned'] == 1)]
-surgical_sessions_master = surgical_sessions.loc[(surgical_sessions['specialty_id'] == specialty_id) &
-    (surgical_sessions['facility'] == facility) & surgical_sessions['planned'] == 1]
+    # Filter surgeries and sessions to the specialty and facility of interest.
+    surgeries_master = surgeries.loc[(surgeries['specialty_id'] == specialty_id) &
+        (surgeries['facility'] == facility) & (surgeries['planned'] == 1)]
+    surgical_sessions_master = surgical_sessions.loc[(surgical_sessions['specialty_id'] == specialty_id) &
+        (surgical_sessions['facility'] == facility) & surgical_sessions['planned'] == 1]
 
-#use same patients for both perfect and imperfect info
-surgeries_initial_waitlist, surgeries_to_arrive_partitioned_master = create_schedule_partition_surs(surgeries_master, 
-                            simulation_start_date, simulation_end_date, days_considered_tardy, 
-                            chance_of_inconvenience_for_each_day_month_week,global_rng=global_rng)
-all_sess_master, sessions_to_arrive_partitioned_master = create_schedule_partition_sess(surgical_sessions_master, 
-                            simulation_start_date, simulation_end_date)
-# Convert start_time to datetime if it's not already in datetime format
-surgical_sessions_master['start_time'] = pd.to_datetime(surgical_sessions['start_time'])
+    # Convert start_time to datetime if it's not already in datetime format
+    surgical_sessions_master['start_time'] = pd.to_datetime(surgical_sessions['start_time'])
 
-#these will store disruption metrics
-disruption_count_df_csv = None
-priority_and_warning_times_df_csv = None
+    #these will store disruption metrics
+    disruption_count_df_csv = None
+    priority_and_warning_times_df_csv = None
 
-#do you want graphs each week?
-create_graphs = True
+    #do you want graphs each week?
+    create_graphs = False
 
-#calculate number of weeks:
-weeks = (simulation_end_date - simulation_start_date).days // 7
+    #calculate number of weeks:
+    weeks = (simulation_end_date - simulation_start_date).days // 7
 
-#set up desired number of runs
-num_runs = 15
+    #set up desired number of runs
+    num_runs = 15
 
-#set seed
-global_rng = np.random.default_rng(seed=seed)
+    loop = True #set to true to run multiple times with different priority assignments for averaging purposes
+    for iter in range(num_runs):
 
-loop = True #set to true to run multiple times with different priority assignments for averaging purposes
-for iter in range(num_runs):
-    # realise the duration of all surgeries now so that it is common across experimental values. 
-    simulated_durations = simulate_durations_2(surgeries_master)
-
-    #use same patients for both perfect and imperfect info
-    surgeries_initial_waitlist, surgeries_to_arrive_partitioned_master = create_schedule_partition_surs(surgeries_master, 
-                                simulation_start_date, simulation_end_date, days_considered_tardy, 
-                                chance_of_inconvenience_for_each_day_month_week,global_rng=global_rng)
-    all_sess_master, sessions_to_arrive_partitioned_master = create_schedule_partition_sess(surgical_sessions_master, 
-                                simulation_start_date, simulation_end_date)
-    #PERFECT INFO LOOP
-    perfect_infos_considered = [True, False] if is_perfect_info_considered else [False]
-    for perfect_info_bool in perfect_infos_considered:
-        #OVERTIME LOOP
-        overtimes_considered = [0, 15, 30, 45, 60] if is_overtime_considered else [allowed_overtime_default]
-        for allowed_overtime in overtimes_considered:
+        #PERFECT INFO LOOP
+        perfect_infos_considered = [True, False] if is_perfect_info_considered else [False]
+        for perfect_info_bool in perfect_infos_considered:
+            #OVERTIME LOOP
+            overtimes_considered = [0, 15, 30, 45, 60] if is_overtime_considered else [30]
+            for allowed_overtime in overtimes_considered:
 
                 #DISRUPTION LOOP
                 is_disruption_considered_options = [True, False] if is_disruption_considered_this_experiment else [False]
                 for is_disruption_considered in is_disruption_considered_options:
 
                     # PERCENTILES LOOP
-                    percentiles_considered = [65] if solve_percentiles else [default_percentile_value]
+                    percentiles_considered = [20, 30, 40, 45, 50, 55, 60, 70] if solve_percentiles else [default_percentile_value]
                     for percentile_value in percentiles_considered:
 
                         #list for keeping track of swaps/disruption
@@ -196,6 +181,13 @@ for iter in range(num_runs):
                         #for warm starts
                         last_week_solution = None
                         week_1_solution = None
+
+                        #use same patients for both perfect and imperfect info
+                        surgeries_initial_waitlist, surgeries_to_arrive_partitioned_master = create_schedule_partition_surs(surgeries_master, 
+                                                    simulation_start_date, simulation_end_date, days_considered_tardy, 
+                                                    chance_of_inconvenience_for_each_day_month_week,seed=seed)
+                        all_sess_master, sessions_to_arrive_partitioned_master = create_schedule_partition_sess(surgical_sessions_master, 
+                                                    simulation_start_date, simulation_end_date)
 
 
                         #re-load same patients as used for perfect info and non-perfect info by loading in the unchanged master copies
@@ -209,8 +201,10 @@ for iter in range(num_runs):
                         recently_cancelled_surgeries = []
 
                         for week in range(1, weeks + 1):
-                            print(f"iter: {iter}")
                             print(f"week: {week}")
+
+                            if print_verbose: 
+                                print(f"\n\nWeek {week}\n------------------------------------------------")
 
                             #collect these so we know which switches between weeks count as disruptions
                             new_sessions = []
@@ -232,11 +226,6 @@ for iter in range(num_runs):
                             #add new surgeries to waitlist
                             waitlist = waitlist + new_surgeries
 
-                            # change ed to percentile value if using percentiles
-                            if solve_percentiles:
-                                # do this before get plenty of session so that still works when using large percentiles
-                                waitlist = replace_ev_with_percentile(waitlist, percentile_value)
-
                             plenty_of_sess = get_plenty_of_sess(all_sess, waitlist) #make sure there's enough sessions so every surgery scheduled but not too many
                             
                             #CREATE SCHEDULES
@@ -244,21 +233,21 @@ for iter in range(num_runs):
                             #make string version of perfect_info_bool
                             perfect_info_string = "False"
                             if perfect_info_bool: 
-                                perfect_info_string = "True"
+                                perfect_info_string = "True"  
 
                             #make string version of is_disruption_considered
                             is_disruption_considered_string = "True" if is_disruption_considered else "False"
 
-                            start_date_formatted = str(simulation_start_date.date()).replace("-","")[2:6]
-                            end_date_formatted = str(simulation_end_date.date()).replace("-","")[2:6]
+                            start_date_formatted = str(simulation_start_date.date()).replace("-","")[4:]
+                            end_date_formatted = str(simulation_end_date.date()).replace("-","")[4:]
 
                             #SUFFIXs for experiments
                             #use this suffix in the name of any csv output from an experiment over 15 iterations
                             suffix = f"s_{specialty_id}_f_{facility}_sd_{start_date_formatted}_ed_{end_date_formatted}_"
                             suffix += f"ipic_{'T' if is_perfect_info_considered else 'F'}_idce_{'T' if is_disruption_considered_this_experiment else 'F'}_mdp_{max_disruption_parameter}_"
-                            suffix += f"mds_{max_disruption_shift}_ipc_{'T' if solve_percentiles else 'F'}_pc_{percentiles_considered}_ioc_{'T' if is_overtime_considered else 'F'}_dct_{days_considered_tardy}_"
+                            suffix += f"mds_{max_disruption_shift}_ipc_{'T' if solve_percentiles else 'F'}_pv_{percentile_value}_ioc_{'T' if is_overtime_considered else 'F'}_dct_{days_considered_tardy}_"
                             suffix += f"tl_{time_lim_other_weeks}_og_{str(optimality_gap).split('.')[1]}"
-                            #use this suffix for any one iteration run
+                            #use this suffix for any one itertion run
                             suffix_for_iter = f"i_{iter}_pi_{'T' if perfect_info_string == 'True' else 'F'}_pc_{percentile_value}_ao_{allowed_overtime}_idc_{is_disruption_considered_string[0]}_" + suffix
                             #use this suffix for storing solutions in databases for a given week
                             suffix_for_week = f"w_{week}_" + suffix_for_iter
@@ -284,6 +273,9 @@ for iter in range(num_runs):
                                 # TODO: check if solution has been solved for specified percentile
                                 inconvenience_sol = get_solution(session, 10, 10, 10) #fudge a little bit so I don't have to rewrite Tom's code
                                 if inconvenience_sol is None or solve_anyway:
+                                    # change ed to percentile value if using percentiles
+                                    if solve_percentiles:
+                                        waitlist = replace_ev_with_percentile(waitlist, percentile_value)
                                     for surgery in waitlist:
                                         if np.isnan(surgery.ed):
                                             print("stop here")
@@ -342,10 +334,10 @@ for iter in range(num_runs):
                                 if create_graphs: 
                                     create_session_graph(inconvenience_sol, session, db_name, num_sessions_to_plot)
 
-                            # simulated_durations = simulate_durations(new_sessions, waitlist, sess_sur_dict)
+                            simulated_durations = simulate_durations(new_sessions, waitlist, sess_sur_dict)
 
                             # execute the schedule
-                            utilisation, overtime, num_cancelled_over, num_cancelled_pref, time_operating, completed_surgeries, cancelled_surgeries, number_overtime_sessions = execute_schedule(simulated_durations, sess_sur_dict, new_sessions, waitlist, turn_around, allowed_overtime, simulation_start_date)
+                            utilisation, overtime, num_cancelled_over, num_cancelled_pref, time_operating, completed_surgeries, cancelled_surgeries = execute_schedule(simulated_durations, sess_sur_dict, new_sessions, waitlist, turn_around, allowed_overtime, simulation_start_date)
                             # get number of surgeries cancelled for each reason
                             total_cancelled_over = sum(num_cancelled_over)
                             total_cancelled_pref = sum(num_cancelled_pref)
@@ -359,9 +351,9 @@ for iter in range(num_runs):
 
                             #compute important metrics - ignore weeks where no new sessions
                             if len(new_sessions) != 0:
-                                metrics = compute_metrics(waitlist, scheduled_sessions, week, completed_surgeries, sess_sur_dict)
+                                metrics = compute_metrics(waitlist, scheduled_sessions, week, completed_surgeries)
                                 num_sessions, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100 = metrics
-                                metrics_df.loc[len(metrics_df.index)] = [iter, obj_type, is_disruption_considered_string, perfect_info_string, days_considered_tardy, week, num_sessions, number_overtime_sessions, allowed_overtime, percentile_value, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, total_cancelled_over, total_cancelled_pref, total_completed, avg_utilisation, avg_overtime, total_time_operating]
+                                metrics_df.loc[len(metrics_df.index)] = [iter, obj_type, is_disruption_considered_string, perfect_info_string, days_considered_tardy, week, num_sessions, total_tardiness, number_patients_tardy, average_waittime_p33, average_waittime_p66, average_waittime_p100, total_cancelled_over, total_cancelled_pref, total_completed, avg_utilisation, avg_overtime, total_time_operating]
                                 metrics_df_file_name = "metrics" + suffix_for_csvs
                                 metrics_df.to_csv(os.path.join(output_db_location_to_use, metrics_df_file_name))
                             
@@ -399,12 +391,12 @@ for iter in range(num_runs):
                         disruption_count_df_csv.to_csv(os.path.join(output_db_location_to_use,"diruption_count_"+suffix_for_csvs))
                         priority_and_warning_times_df_csv.to_csv(os.path.join(output_db_location_to_use,"priority&warning"+suffix_for_csvs))
 
-                        columns_to_summarise=['num_sessions', 'num sessions overtime', 'total tardiness','number of patients tardy', 'average wait time (priority < 0.33)',	
-                                                    'average wait_time (0.33 < priority < 0.66)',	'average wait time 0.66 < priority',	
-                                                    'total cancelled overtime', 'total cancelled inconvenient', 'total surgeries completed', 'average utilisation',
-                                                        'average overtime', 'total time operating', 'total surgeries completed']
+                        columns_to_summarise=['num_sessions', 'total tardiness','number of patients tardy',	'average wait time (priority < 0.33)',	
+                                            'average wait_time (0.33 < priority < 0.66)',	'average wait time 0.66 < priority',	
+                                            'total cancelled overtime', 'total cancelled inconvenient', 'total surgeries completed', 'average utilisation',
+                                                'average overtime', 'total time operating']
 
-                        average_values = metrics_df.groupby(['perfect_information_bool', 'disruptions?'])[columns_to_summarise].mean().reset_index()
+                        average_values = metrics_df.groupby('perfect_information_bool')[columns_to_summarise].mean().reset_index()
                         average_values.to_csv(os.path.join(output_db_location_to_use,"average_values_" + suffix_for_csvs))
                         if print_verbose: 
                             print(average_values)

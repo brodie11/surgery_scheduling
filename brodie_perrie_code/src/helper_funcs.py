@@ -241,7 +241,7 @@ def print_detailed_ses_sur_dict(sess_sur_dict, waitlist, plenty_of_sess, turn_ar
 
         print(f"  combined surgery durations for session {session_id} is {combined_surgery_duration - turn_around}")
          
-def compute_metrics(waitlist, scheduled_sessions, week, completed_surgeries):
+def compute_metrics(waitlist, scheduled_sessions, week, completed_surgeries, sess_sur_dict):
 
     total_tardiness = 0
     number_patients_tardy = 0
@@ -254,10 +254,10 @@ def compute_metrics(waitlist, scheduled_sessions, week, completed_surgeries):
     for session in scheduled_sessions:
         #get associated surgery ids
         # scheduled_surgery_ids = ses_sur_dict[session.n]
-        num_surs_scheduled += len(completed_surgeries)
 
         #and surgery objects
-        scheduled_surgeries = [surgery for surgery in waitlist if surgery.n in completed_surgeries]
+        scheduled_surgeries = [surgery for surgery in waitlist if surgery.n in sess_sur_dict[session.n]]
+        num_surs_scheduled += len(scheduled_surgeries)
         
         for surgery in scheduled_surgeries:
           tardiness = max(0, session.sdt - surgery.dd)
@@ -402,7 +402,7 @@ class inconvenienceProb:
       self.cost[o.n] = {}
       for s in self.sess:
           tardiness = max([s.sdt - o.dd, 0])
-          self.cost[o.n][s.n] = 365*tardiness + (o.priority*s.sdt) #TODO make so 365 is replaced with days_in_simulation_period    
+          self.cost[o.n][s.n] = 3000*tardiness + (o.priority*s.sdt) #TODO make so 365 is replaced with days_in_simulation_period    
     # plot_cost(self.cost)
 
     if self.obj_type == "t":
