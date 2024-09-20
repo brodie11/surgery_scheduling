@@ -69,7 +69,7 @@ def plot_dual_average_values(df, x_column, y1_column, y2_column, fig_title, xlab
     ax1.grid(True)
 
     # Display the plot
-    plt.savefig(f'brodie_perrie_code/output/Perrie_exp/plots/{fig_title}.png', format='png')
+    plt.savefig(f'brodie_perrie_code/output/perrie_results/plots/{fig_title}.png', format='png')
 
 
 # Path to the folder containing your CSV files
@@ -169,7 +169,7 @@ def plot_avg_wait_time(df, x_column, fig_title, xlabel="X-axis"):
     ax1.grid(True)
 
     # Display the plot
-    plt.savefig(f'brodie_perrie_code/output/Perrie_exp/plots/{fig_title}.png', format='png')
+    plt.savefig(f'brodie_perrie_code/output/perrie_results/plots/{fig_title}.png', format='png')
 
 # Overtime priority waiting time
 plot_avg_wait_time(overtime_dataframe, "allowed overtime", "priority_wait_time_overtime", "Overtime Values (mins)")
@@ -197,7 +197,7 @@ def get_baseline_results(overtime_dataframe):
     results_df = pd.concat([results_df, mean_df], ignore_index=True)
 
     csv_title = "baseline_results"
-    results_df.to_csv(f'brodie_perrie_code/output/Perrie_exp/plots/{csv_title}.csv', index=False)
+    results_df.to_csv(f'brodie_perrie_code/output/perrie_results/{csv_title}.csv', index=False)
 
     return
 
