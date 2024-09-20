@@ -21,22 +21,24 @@ def replace_ev_with_percentile(sched_surs, percentile):
     new_sched_surs = []
     for sched_sur in sched_surs:
         # check if percentile already found
-        if hasattr(sched_sur, 'actual_mean'):
+        if sched_sur.actual_mean == sched_sur.ed:
+            #get ev and variance
+            ed = sched_sur.ed
+            dv = sched_sur.dv
+            # Convert mean and variance of lognormal distribution to mean and standard deviation of normal distribution
+            x_mean, x_var = lognormal_to_normal(ed, dv)
+            # Calculate percentile value of normal distribution
+            percentile_value = lognorm.ppf(percentile / 100, s=np.sqrt(x_var), scale=np.exp(x_mean))
+
+            sched_sur.actual_mean = ed
+            sched_sur.ed = percentile_value
+
+            new_sched_surs.append(sched_sur)
+        else:
             new_sched_surs.append(sched_sur)
             continue
 
-        #get ev and variance
-        ed = sched_sur.ed
-        dv = sched_sur.dv
-        # Convert mean and variance of lognormal distribution to mean and standard deviation of normal distribution
-        x_mean, x_var = lognormal_to_normal(ed, dv)
-        # Calculate percentile value of normal distribution
-        percentile_value = lognorm.ppf(percentile / 100, s=np.sqrt(x_var), scale=np.exp(x_mean))
 
-        sched_sur.actual_mean = ed
-        sched_sur.ed = percentile_value
-
-        new_sched_surs.append(sched_sur)
 
     return new_sched_surs
 
@@ -44,10 +46,6 @@ def simulate_durations(weeks_sessions, weeks_surgeries, sess_surg_dict):
     """
     does one simulation run of surgery durations 
     based on their lognormal distribution. 
-
-    Note: We assume a surgery is allowed to go ahead so long
-    as its expected time won't put the session overtime by 
-    more than specified overtime. Otherwise, the surgery is cancelled
 
     output:
     realisation of durations
@@ -72,10 +70,39 @@ def simulate_durations(weeks_sessions, weeks_surgeries, sess_surg_dict):
 
     return simulated_durations
 
+def simulate_durations_2(surgeries):
+    """
+    does one simulation run of surgery durations 
+    based on their lognormal distribution. 
+    This version takes the datadrame of all surgeries rather than a list of objects and gets a realisation for all of them. 
+
+    output:
+    realisation of durations
+    
+    """
+
+    # simulation
+    simulated_durations = {}
+    # loop through each surgery
+    for index, surgery in surgeries.iterrows():
+        actual_mean = surgery['predicted_duration']
+        actual_variance = surgery['predicted_variance']
+        # Calculate the mean (mu) and standard deviation (sigma) of the corresponding normal distribution
+        mu = np.log(actual_mean / np.sqrt(1 + ((actual_variance/actual_mean**2))))
+        sigma = np.sqrt(np.log(1 + (actual_variance / actual_mean**2)))
+        simulated_durations[index] = np.random.lognormal(mean=mu, sigma=sigma, size=1)[0]
+
+    return simulated_durations
+
 
 def execute_schedule(simulated_durations, sess_surg_dict, weeks_sessions, waitlist, turn_around, allowed_overtime, sim_start_date):
     """
     Takes the realisation of simulated surgeries and executes the schedule. 
+
+    Note: We assume a surgery is allowed to go ahead so long
+    as its expected time won't put the session overtime by 
+    more than specified overtime. Otherwise, the surgery is cancelled
+
     Returns the utilisation, overtime, number of cancellations, time spent operating for each session and a list completed surgeries ids.
     """
     # initialize return values
@@ -86,6 +113,7 @@ def execute_schedule(simulated_durations, sess_surg_dict, weeks_sessions, waitli
     time_operating_array = []
     completed_surgeries = []
     cancelled_surgeries = []
+    number_overtime_sessions = 0
 
     for session in weeks_sessions:
         # get list of surgery objects in session
@@ -138,10 +166,16 @@ def execute_schedule(simulated_durations, sess_surg_dict, weeks_sessions, waitli
         if utilisation > 1:
             utilisation = 1
         utilisation_array.append(utilisation)
-        overtime_array.append(max(time_elapsed - session.sd, 0))
+        # calculate overtime
+        overtime = max(time_elapsed - session.sd, 0)
+        overtime_array.append(overtime)
         number_cancelled_over_array.append(number_cancelled_over)
         number_cancelled_pref_array.append(number_cancelled_pref)  
         time_operating_array.append(time_spent_operating)
+
+        # increment numner of overtime sessions
+        if overtime > 0:
+            number_overtime_sessions += 1
         
 
-    return utilisation_array, overtime_array, number_cancelled_over_array, number_cancelled_pref_array, time_operating_array, completed_surgeries, cancelled_surgeries
+    return utilisation_array, overtime_array, number_cancelled_over_array, number_cancelled_pref_array, time_operating_array, completed_surgeries, cancelled_surgeries, number_overtime_sessions

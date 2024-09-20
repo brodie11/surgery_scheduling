@@ -2,6 +2,7 @@
 perrie_env/
 myenv1/
 my_venv/
+venv/
 toms_code/venv/
 *.db
 *.pdf

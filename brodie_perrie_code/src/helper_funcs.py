@@ -478,14 +478,14 @@ class inconvenienceProb:
 
     for j, s in enumerate(self.sess):
       for i, o in enumerate(self.ops):
-        # try:
-        if self.x[o.n, s.n].X > 0.99:
-          self.ses_sur_dict[s.n].append(o.n)
-        # except:
-        #    print(f"self.x[o.n,s.n] {self.x[o.n,s.n]}")
-        #    print(f"self.iter{self.iter}")
-        #   # print('Scheduled:', i, o.n, int(o.ed), o.priority)
-    print(self.prob.objVal)
+        try:
+          if self.x[o.n, s.n].X > 0.99:
+            self.ses_sur_dict[s.n].append(o.n)
+        except AttributeError:
+           print(f"self.x[o.n,s.n] {self.x[o.n,s.n]}")
+           print(f"self.iter{self.iter}")
+          # print('Scheduled:', i, o.n, int(o.ed), o.priority)
+    # print(self.prob.objVal)
 
     # if self.idc == True and self.init_assign is not None: #TODO Brodie was using for debugging. Can delete if not already deleted by week 7
     #   # Get the constraint by its name
