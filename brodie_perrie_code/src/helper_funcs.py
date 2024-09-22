@@ -402,7 +402,7 @@ class inconvenienceProb:
       self.cost[o.n] = {}
       for s in self.sess:
           tardiness = max([s.sdt - o.dd, 0])
-          self.cost[o.n][s.n] = 3000*tardiness + (o.priority*s.sdt) #TODO make so 365 is replaced with days_in_simulation_period    
+          self.cost[o.n][s.n] = 365*tardiness + (o.priority*s.sdt) #TODO make so 365 is replaced with days_in_simulation_period    
     # plot_cost(self.cost)
 
     if self.obj_type == "t":

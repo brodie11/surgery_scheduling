@@ -76,9 +76,16 @@ def plot_dual_average_values(df, x_column, y1_column, y2_column, fig_title, xlab
 folder_path = 'brodie_perrie_code/output/perrie_experiments'
 
 # overtime results
-filename = 'metricss_0_f_A_sd_0301_ed_0301_ipic_F_idce_F_mdp_-1_mds_-1_ipc_F_pc_[50]_ioc_T_dct_91_tl_20_og_05.csv'
+filename = 'metricss_0_f_A_sd_1503_ed_1603_ipic_F_idce_F_mdp_-1_mds_-1_ipc_F_pc_[50]_ioc_[0, 15, 30, 45, 60, 75, 90]_dct_91_tl_20_og_05.csv'
 file_path = os.path.join(folder_path, filename)
 overtime_dataframe  = pd.read_csv(file_path)
+
+# # extra overtime results
+# filename_2 = 'metricss_0_f_A_sd_1503_ed_1603_ipic_F_idce_F_mdp_-1_mds_-1_ipc_F_pc_[50]_ioc_[75, 90]_dct_91_tl_20_og_05.csv'
+# file_path_2 = os.path.join(folder_path, filename_2)
+# overtime_dataframe_2 = pd.read_csv(file_path_2)
+
+# overtime_dataframe = pd.concat([overtime_dataframe, overtime_dataframe_2], ignore_index=True)
 
 x_col = "allowed overtime"
 y_col1 = "total cancelled overtime"
@@ -96,6 +103,13 @@ plot_dual_average_values(overtime_dataframe, x_col, y_col1, y_col2, fig_title = 
 filename = 'metricss_0_f_A_sd_0301_ed_0301_ipic_F_idce_F_mdp_-1_mds_-1_ipc_T_pc_[30, 35, 40, 45, 50, 55, 60]_ioc_F_dct_91_tl_20_og_05.csv'
 file_path = os.path.join(folder_path, filename)
 percentile_dataframe = pd.read_csv(file_path)
+
+# percentile results
+filename_2 = 'metricss_0_f_A_sd_1503_ed_1603_ipic_F_idce_F_mdp_-1_mds_-1_ipc_T_pc_[65]_ioc_F_dct_91_tl_20_og_05.csv'
+file_path_2 = os.path.join(folder_path, filename_2)
+percentile_dataframe_2 = pd.read_csv(file_path_2)
+
+percentile_dataframe = pd.concat([percentile_dataframe, percentile_dataframe_2], ignore_index=True)
 
 x_col = "percentile"
 y_col1 = "total cancelled overtime"

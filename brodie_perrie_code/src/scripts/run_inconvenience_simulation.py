@@ -71,7 +71,7 @@ settings_perrie = {
     'sp': True,
     'mdp': -1,
     'mds': -1,
-    'ioc': False,
+    'ioc': True,
     'ipc': False
 }
 
@@ -110,7 +110,7 @@ for settings_dict in settings_dicts:
     chance_of_inconvenience_for_each_day_month_week = 0.069
     obj_type = "t&p matrix"
     #set to true if you want to manually resolve each gurobi problem and ignore stored solutions
-    solve_anyway = False
+    solve_anyway = True
     #set how long it takes for someone to be considered tardy
     months_considered_tardy = 3
     days_considered_tardy = round(months_considered_tardy*(365/12)) #try 2 months for next disruption comparison run
@@ -180,7 +180,7 @@ for settings_dict in settings_dicts:
         perfect_infos_considered = [True, False] if is_perfect_info_considered else [False]
         for perfect_info_bool in perfect_infos_considered:
             #OVERTIME LOOP
-            overtimes_considered = [0, 15, 30, 45, 60] if is_overtime_considered else [allowed_overtime_default]
+            overtimes_considered = [30] if is_overtime_considered else [allowed_overtime_default]
             for allowed_overtime in overtimes_considered:
 
                     #DISRUPTION LOOP
@@ -188,7 +188,7 @@ for settings_dict in settings_dicts:
                     for is_disruption_considered in is_disruption_considered_options:
 
                         # PERCENTILES LOOP
-                        percentiles_considered = [65] if solve_percentiles else [default_percentile_value]
+                        percentiles_considered = [45] if solve_percentiles else [default_percentile_value]
                         for percentile_value in percentiles_considered:
 
                             #list for keeping track of swaps/disruption
@@ -260,7 +260,7 @@ for settings_dict in settings_dicts:
                                 #use this suffix in the name of any csv output from an experiment over 15 iterations
                                 suffix = f"s_{specialty_id}_f_{facility}_sd_{start_date_formatted}_ed_{end_date_formatted}_"
                                 suffix += f"ipic_{'T' if is_perfect_info_considered else 'F'}_idce_{'T' if is_disruption_considered_this_experiment else 'F'}_mdp_{max_disruption_parameter}_"
-                                suffix += f"mds_{max_disruption_shift}_ipc_{'T' if solve_percentiles else 'F'}_pc_{percentiles_considered}_ioc_{'T' if is_overtime_considered else 'F'}_dct_{days_considered_tardy}_"
+                                suffix += f"mds_{max_disruption_shift}_ipc_{'T' if solve_percentiles else 'F'}_pc_{percentiles_considered}_ioc_{overtimes_considered}_dct_{days_considered_tardy}_"
                                 suffix += f"tl_{time_lim_other_weeks}_og_{str(optimality_gap).split('.')[1]}"
                                 #use this suffix for any one iteration run
                                 suffix_for_iter = f"i_{iter}_pi_{'T' if perfect_info_string == 'True' else 'F'}_pc_{percentile_value}_ao_{allowed_overtime}_idc_{is_disruption_considered_string[0]}_" + suffix
